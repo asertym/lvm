@@ -81,7 +81,6 @@ func cmdVersion() *cobra.Command {
 
 // cmdInit sets up lvm and automatically configures PATH.
 // Zero friction: no prompts, no manual copy-paste required.
-// cmdInit sets up lvm and automatically configures PATH.
 func cmdInit() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
@@ -104,26 +103,24 @@ func cmdInit() *cobra.Command {
 			shimsDir := mgr.ShimsDir()
 
 			if runtime.GOOS == "windows" {
-				// Windows: Use .NET API to safely update User PATH (avoids setx 1024-char limit)
-				// Step 1: write PATH
-psWrite := fmt.Sprintf(
-    `$current = [Environment]::GetEnvironmentVariable('PATH', 'User');
-     if ($null -eq $current) { $current = '' };
-     $parts = $current -split ';' | Where-Object { $_ -ne '' };
-     if ($parts -notcontains '%s') {
-       $new = ('%s;' + ($parts -join ';')).TrimEnd(';');
-       [Environment]::SetEnvironmentVariable('PATH', $new, 'User')
-     }`,
-    shimsDir, shimsDir,
-)
-if err := exec.Command("powershell", "-NoProfile", "-Command", psWrite).Run(); err != nil {
-    return fmt.Errorf("failed to update Windows PATH: %w", err)
-}
-
-// Step 2: broadcast the change so Explorer + new terminals pick it up
-exec.Command("rundll32.exe", "user32.dll,UpdatePerUserSystemParameters").Run()
+				// Write shims dir to user PATH as REG_EXPAND_SZ via PowerShell.
+				// REG_EXPAND_SZ ensures the value survives new terminal sessions
+				// and correctly merges with the system PATH — REG_SZ does not.
+				psWrite := fmt.Sprintf(
+					`$current = [Environment]::GetEnvironmentVariable('PATH', 'User');
+					 if ($null -eq $current) { $current = '' };
+					 $parts = $current -split ';' | Where-Object { $_ -ne '' };
+					 if ($parts -notcontains '%s') {
+					   $new = ('%s;' + ($parts -join ';')).TrimEnd(';');
+					   Set-ItemProperty -Path 'HKCU:\Environment' -Name 'PATH' -Value $new -Type ExpandString
+					 }`,
+					shimsDir, shimsDir,
+				)
+				if err := exec.Command("powershell", "-NoProfile", "-Command", psWrite).Run(); err != nil {
+					return fmt.Errorf("failed to update Windows PATH: %w", err)
+				}
 			} else {
-				// Unix: Append to the first available standard shell profile
+				// Unix: append to the first available standard shell profile.
 				home, _ := os.UserHomeDir()
 				profiles := []string{".zshrc", ".bashrc", ".bash_profile", ".profile"}
 				line := fmt.Sprintf("\n# lvm\nexport PATH=\"%s:$PATH\"\n", shimsDir)
