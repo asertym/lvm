@@ -13,7 +13,7 @@ import (
 
 const (
 	apiBase      = "https://api.github.com"
-	repo         = "ggerganov/llama.cpp"
+	repo         = "ggml-org/llama.cpp"
 	cacheTimeout = time.Hour
 )
 

@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/charmbracelet/huh"
 
 	gh "lvm/internal/github"
 	"lvm/internal/manager"
@@ -14,34 +17,100 @@ import (
 // --- lvm use ---
 
 func cmdUse() *cobra.Command {
-	return &cobra.Command{
-		Use:   "use <version-id>",
+	var interactive bool
+
+	cmd := &cobra.Command{
+		Use:   "use [version-id]",
 		Short: "Switch to an installed version",
 		Long: `Switch the active llama.cpp version.
 
-The version-id must match an installed version (see: lvm ls).
-Switching is instant — only the active pointer is updated.
+Without an argument, enters interactive mode (arrow-key selection).
+With a version-id, switches directly.
 
 Examples:
   lvm use b3412-cuda
-  lvm use b3200-cpu`,
-		Args: cobra.ExactArgs(1),
+  lvm use   # interactive picker
+`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := args[0]
-			if !mgr.IsInstalled(id) {
-				return fmt.Errorf(
-					"%q is not installed\nRun 'lvm install %s' to install it, or 'lvm ls' to see installed versions",
-					id, id,
-				)
+			versions, err := mgr.ListInstalled()
+			if err != nil {
+				return err
 			}
-			manifest, err := mgr.ReadManifest(id)
-			ch := manager.ChannelStable
-			if err == nil {
-				ch = manifest.Channel
+			if len(versions) == 0 {
+				return fmt.Errorf("no versions installed. Run: lvm install latest")
 			}
-			return switchTo(id, ch)
+
+			// Explicit version argument — fast path.
+			if len(args) > 0 && !interactive {
+				return useVersion(args[0])
+			}
+
+			// Interactive picker.
+			return useInteractive(versions)
 		},
 	}
+
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive arrow-key selection")
+	return cmd
+}
+
+// useInteractive shows a huh-based arrow-key picker for installed versions.
+func useInteractive(versions []manager.Version) error {
+	var selectedID string
+	options := make([]huh.Option[string], len(versions))
+	for i, v := range versions {
+		label := v.ID
+		if v.Channel == manager.ChannelBeta {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			label = fmt.Sprintf("%s  %s", v.ID, yellow("beta"))
+		}
+		options[i] = huh.NewOption(label, v.ID)
+	}
+
+	a := isatty.IsTerminal(os.Stdin.Fd())
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select a version to use").
+				Description("Arrow keys to navigate, Enter to confirm").
+				Options(options...).Value(&selectedID),
+		),
+	)
+	if a {
+		form = form.WithAccessible(false)
+	}
+
+	if err := form.Run(); err != nil {
+		if err == huh.ErrUserAborted {
+			return nil
+		}
+		return fmt.Errorf("selection aborted: %w", err)
+	}
+
+	// Validate selection.
+	manifest, err := mgr.ReadManifest(selectedID)
+	ch := manager.ChannelStable
+	if err == nil {
+		ch = manifest.Channel
+	}
+	return switchTo(selectedID, ch)
+}
+
+// useVersion handles the non-interactive path (called from both explicit arg and programmatic).
+func useVersion(id string) error {
+	if !mgr.IsInstalled(id) {
+		return fmt.Errorf(
+			"%q is not installed\nRun 'lvm install %s' to install it, or 'lvm ls' to see installed versions",
+			id, id,
+		)
+	}
+	manifest, err := mgr.ReadManifest(id)
+	ch := manager.ChannelStable
+	if err == nil {
+		ch = manifest.Channel
+	}
+	return switchTo(id, ch)
 }
 
 // switchTo updates the active pointer and channel state, then prints confirmation.
@@ -344,21 +413,99 @@ Examples:
 // --- lvm uninstall ---
 
 func cmdUninstall() *cobra.Command {
-	return &cobra.Command{
-		Use:     "uninstall <version-id>",
+	var interactive bool
+
+	cmd := &cobra.Command{
+		Use:     "uninstall [version-id]",
 		Aliases: []string{"remove", "rm"},
 		Short:   "Remove an installed version",
-		Args:    cobra.ExactArgs(1),
+		Long: `Remove an installed llama.cpp version.
+
+Without an argument, enters interactive mode (arrow-key selection).
+With a version-id, removes it directly.
+
+Examples:
+  lvm uninstall b3412-cuda
+  lvm uninstall   # interactive picker
+`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := args[0]
-			if err := mgr.Remove(id); err != nil {
+			versions, err := mgr.ListInstalled()
+			if err != nil {
 				return err
 			}
-			green := color.New(color.FgGreen, color.Bold).SprintFunc()
-			fmt.Printf("%s Removed %s\n", green("✓"), id)
-			return nil
+
+			// Explicit version argument — fast path.
+			if len(args) > 0 && !interactive {
+				return uninstallVersion(args[0])
+			}
+
+			return uninstallInteractive(versions)
 		},
 	}
+
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive arrow-key selection")
+	return cmd
+}
+
+// uninstallInteractive shows a huh-based picker and confirms removal.
+func uninstallInteractive(versions []manager.Version) error {
+	var selectedID string
+	active := mgr.Active()
+
+	options := make([]huh.Option[string], 0, len(versions))
+	for _, v := range versions {
+		label := v.ID
+		if v.ID == active {
+			label = v.ID + " " + color.New(color.FgRed).Sprint("[active — cannot remove]")
+		}
+		options = append(options, huh.NewOption(label, v.ID))
+	}
+
+	if len(options) == 0 {
+		return fmt.Errorf("no versions installed")
+	}
+
+	a := isatty.IsTerminal(os.Stdin.Fd())
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select a version to remove").
+				Description("Cannot remove the active version. Arrow keys to navigate, Enter to confirm").
+				Options(options...).Value(&selectedID),
+		),
+	)
+	if a {
+		form = form.WithAccessible(false)
+	}
+
+	if err := form.Run(); err != nil {
+		if err == huh.ErrUserAborted {
+			return nil
+		}
+		return fmt.Errorf("selection aborted: %w", err)
+	}
+
+	if selectedID == active {
+		return fmt.Errorf("cannot remove active version %q — run 'lvm use <other>' first", selectedID)
+	}
+
+	if err := mgr.Remove(selectedID); err != nil {
+		return err
+	}
+	green := color.New(color.FgGreen, color.Bold).SprintFunc()
+	fmt.Printf("%s Removed %s\n", green("✓"), selectedID)
+	return nil
+}
+
+// uninstallVersion handles the non-interactive path.
+func uninstallVersion(id string) error {
+	if err := mgr.Remove(id); err != nil {
+		return err
+	}
+	green := color.New(color.FgGreen, color.Bold).SprintFunc()
+	fmt.Printf("%s Removed %s\n", green("✓"), id)
+	return nil
 }
 
 func valueOrNone(s string) string {

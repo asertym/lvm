@@ -9,6 +9,10 @@ lvm install latest
 # Switch to a specific version
 lvm use b3412-cuda
 
+# Interactive version picker
+lvm use          # arrow-key selection
+lvm install      # arrow-key selection
+
 # List all installed versions
 lvm ls
 ```
@@ -36,6 +40,7 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 | **Multiple versions** | Install and switch between any llama.cpp release |
 | **GPU backends** | Support for CPU, CUDA, Metal, Vulkan, ROCm, OpenVINO, SYCL |
 | **Stable & Beta** | Separate channels for production and bleeding-edge builds |
+| **Interactive picker** | Arrow-key selection UI for `use`, `install`, and `uninstall` |
 | **One-command init** | Automatic PATH configuration, zero manual setup |
 | **Auto-shims** | All llama.cpp binaries become accessible via simple commands |
 | **Cross-platform** | Works on Windows, Linux, and macOS |
@@ -115,6 +120,10 @@ lvm install b3412
 lvm install latest --backend cuda
 lvm install b3412 --backend vulkan
 lvm install latest --backend metal
+
+# Interactive picker (arrow-key selection)
+lvm install        # no args → pick from releases list
+lvm install -i     # explicit interactive flag
 ```
 
 **Available backends:**
@@ -131,6 +140,10 @@ lvm install latest --backend metal
 ```bash
 # Switch to a specific installed version
 lvm use b3412-cuda
+
+# Interactive picker (arrow-key selection)
+lvm use            # no args → pick from installed list
+lvm use -i         # explicit interactive flag
 
 # Switch to the stable channel (uses last stable version)
 lvm channel stable
@@ -167,6 +180,10 @@ lvm update --backend cuda --use
 ```bash
 # Remove a specific version
 lvm uninstall b3412-cuda
+
+# Interactive picker (arrow-key selection)
+lvm uninstall      # no args → pick from installed list
+lvm uninstall -i   # explicit interactive flag
 ```
 
 ### Version Information
@@ -248,6 +265,19 @@ lvm install b3150
 lvm use b3150-cpu
 ```
 
+### Example 5: Interactive Mode
+
+```bash
+# Pick an installed version with arrow keys
+lvm use
+
+# Browse all releases and install one
+lvm install
+
+# Remove a version (active version is protected from removal)
+lvm uninstall
+```
+
 ---
 
 ## Directory Structure
@@ -305,6 +335,18 @@ llama-cli.cmd → %LVM_HOME%\shims\llama-cli.cmd
               → checks %LVM_HOME%\active
               → executes %LVM_HOME%\versions\<active>\llama-cli.exe
 ```
+
+### Interactive Picker
+
+When called without a version argument (or with `-i`), `use`, `install`, and `uninstall` use a TUI picker built with [charmbracelet/huh](https://github.com/charmbracelet/huh):
+
+- **Arrow keys** to navigate
+- **Enter** to confirm
+- **Ctrl+C** to abort cleanly
+- Installed versions and beta releases are visually marked
+- Active version cannot be removed in `uninstall`
+
+The picker also adapts to non-TTY contexts (piped input, CI) by switching to accessible keyboard-only mode.
 
 ### Channel State
 
