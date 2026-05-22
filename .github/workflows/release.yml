@@ -93,6 +93,7 @@ jobs:
           )
           echo "body<<BODY" >> "$GITHUB_OUTPUT"
           echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "BODY" >> "$GITHUB_OUTPUT"
 
       - name: Update release with notes
         uses: softprops/action-gh-release@v2
