@@ -1,6 +1,6 @@
 # lvm — llama.cpp Version Manager
 
-A cross-platform CLI tool for managing multiple [llama.cpp](https://github.com/ggerganov/llama.cpp) versions on your machine.
+A cross-platform CLI tool for managing multiple [llama.cpp](https://github.com/ggml-org/llama.cpp) versions on your machine.
 
 ```bash
 # Install latest stable version
@@ -35,18 +35,18 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| **Multiple versions** | Install and switch between any llama.cpp release |
-| **GPU backends** | Support for CPU, CUDA, Metal, Vulkan, ROCm, OpenVINO, SYCL |
-| **Stable & Beta** | Separate channels for production and bleeding-edge builds |
-| **Interactive picker** | Arrow-key selection UI for `use`, `install`, and `uninstall` |
-| **One-command init** | Automatic PATH configuration, zero manual setup |
-| **Auto-shims** | All llama.cpp binaries become accessible via simple commands |
-| **Cross-platform** | Works on Windows, Linux, and macOS |
-| **Cache** | GitHub releases are cached for 6 hours to avoid repeated API calls |
-| **Refresh** | Run `lvm fetch` to manually refresh cached data before TTL expires |
-| **Clean uninstall** | Remove versions without leaving artifacts |
+| Feature                | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Multiple versions**  | Install and switch between any llama.cpp release                   |
+| **GPU backends**       | Support for CPU, CUDA, Metal, Vulkan, ROCm, OpenVINO, SYCL         |
+| **Stable & Beta**      | Separate channels for production and bleeding-edge builds          |
+| **Interactive picker** | Arrow-key selection UI for `use`, `install`, and `uninstall`       |
+| **One-command init**   | Automatic PATH configuration, zero manual setup                    |
+| **Auto-shims**         | All llama.cpp binaries become accessible via simple commands       |
+| **Cross-platform**     | Works on Windows, Linux, and macOS                                 |
+| **Cache**              | GitHub releases are cached for 6 hours to avoid repeated API calls |
+| **Refresh**            | Run `lvm fetch` to manually refresh cached data before TTL expires |
+| **Clean uninstall**    | Remove versions without leaving artifacts                          |
 
 ---
 
@@ -56,7 +56,7 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 
 ```bash
 # Linux/macOS
-curl -sSL https://github.com/YOURNAME/lvm/releases/latest/download/install.sh | sh
+curl -sSL https://github.com/asertym/lvm/releases/latest/download/install.sh | sh
 
 # Windows (PowerShell)
 # Download from https://github.com/YOURNAME/lvm/releases and run install.ps1
@@ -66,7 +66,7 @@ curl -sSL https://github.com/YOURNAME/lvm/releases/latest/download/install.sh | 
 
 ```bash
 # Download the binary for your platform
-wget https://github.com/YOURNAME/lvm/releases/latest/download/lvm-linux-amd64
+wget https://github.com/asertym/lvm/releases/latest/download/lvm-linux-amd64
 
 # Move to a location in your PATH
 sudo mv lvm-linux-amd64 /usr/local/bin/lvm
@@ -78,7 +78,7 @@ lvm init
 ### Building from Source
 
 ```bash
-git clone https://github.com/YOURNAME/lvm.git
+git clone https://github.com/asertym/lvm.git
 cd lvm
 go build -o lvm .
 sudo mv lvm /usr/local/bin/lvm
@@ -129,6 +129,7 @@ lvm install latest # non-interactive
 ```
 
 **Available backends:**
+
 - `cpu` — CPU-only build
 - `cuda` — NVIDIA CUDA GPU acceleration
 - `metal` — Apple Metal (macOS)
@@ -214,7 +215,7 @@ lvm current
 
 ```bash
 # Clone the repo and build
-git clone https://github.com/YOURNAME/lvm.git
+git clone https://github.com/asertym/lvm.git
 cd lvm
 go build -o lvm .
 sudo mv lvm /usr/local/bin/lvm
@@ -364,8 +365,8 @@ Two channels track the "default" version for each track:
 
 ```json
 {
-  "stable": "b3412-cuda",
-  "beta": "b3500-cpu"
+	"stable": "b3412-cuda",
+	"beta": "b3500-cpu"
 }
 ```
 
@@ -375,8 +376,8 @@ Two channels track the "default" version for each track:
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
+| Variable   | Description                        |
+| ---------- | ---------------------------------- |
 | `LVM_HOME` | Override default `~/.lvm` location |
 
 ### Custom Install Location
@@ -468,5 +469,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Credits
 
-- Based on llama.cpp by [ggerganov](https://github.com/ggerganov)
-- Inspired by tools like `nvm`, `rbenv`, `asdf`
+- Based on llama.cpp by [ggml-org](https://github.com/ggml-org)
+- Inspired by tools like `nvm`, `n`, `rbenv`, `asdf`
