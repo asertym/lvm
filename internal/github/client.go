@@ -14,7 +14,7 @@ import (
 const (
 	apiBase      = "https://api.github.com"
 	repo         = "ggml-org/llama.cpp"
-	cacheTimeout = time.Hour
+	cacheTimeout = 6 * time.Hour
 )
 
 // Release represents a single GitHub release.
@@ -159,6 +159,15 @@ func (r *Release) FindSHASUM(assetName string) *Asset {
 // InvalidateCache deletes the local release cache, forcing a fresh fetch next time.
 func (c *Client) InvalidateCache() error {
 	return os.Remove(c.cachePath())
+}
+
+// RefreshCache forces a fresh API fetch and saves the result.
+func (c *Client) RefreshCache() error {
+	releases, err := c.fetchReleases()
+	if err != nil {
+		return err
+	}
+	return c.saveCache(releases)
 }
 
 // --- internal ---

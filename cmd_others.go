@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
-	"github.com/charmbracelet/huh"
 
 	gh "lvm/internal/github"
 	"lvm/internal/manager"
@@ -315,8 +315,6 @@ func cmdUpdate() *cobra.Command {
 			}
 
 			targetID := manager.VersionID(release.TagName, manifest.Backend)
-			_, build := manager.ParseVersionID(active)
-			_ = build
 
 			if targetID == active {
 				green := color.New(color.FgGreen).SprintFunc()
@@ -330,11 +328,37 @@ func cmdUpdate() *cobra.Command {
 				return nil
 			}
 
-			// Re-use install logic by calling cobra directly would create circular
-			// deps; instead we print the command for the user.
-			bold := color.New(color.Bold).SprintFunc()
-			fmt.Printf("\nRun: %s\n", bold(fmt.Sprintf("lvm install %s --backend %s --use", release.TagName, manifest.Backend)))
-			return nil
+			// Prompt user to install the update.
+			var choice string
+			a := isatty.IsTerminal(os.Stdin.Fd())
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Install update?").
+						Description("To install a specific version, run: lvm install").
+						Options(
+							huh.NewOption("get update", "get update"),
+							huh.NewOption("no thanks", "no thanks"),
+						).Value(&choice),
+				),
+			)
+			if a {
+				form = form.WithAccessible(false)
+			}
+
+			if err := form.Run(); err != nil {
+				if err == huh.ErrUserAborted {
+					return nil
+				}
+				return fmt.Errorf("selection aborted: %w", err)
+			}
+
+			if choice == "no thanks" {
+				return nil
+			}
+
+			// Install the update.
+			return installVersion(release.TagName, manifest.Backend, true)
 		},
 	}
 
@@ -506,6 +530,31 @@ func uninstallVersion(id string) error {
 	green := color.New(color.FgGreen, color.Bold).SprintFunc()
 	fmt.Printf("%s Removed %s\n", green("✓"), id)
 	return nil
+}
+
+// --- lvm fetch ---
+
+func cmdFetch() *cobra.Command {
+	return &cobra.Command{
+		Use:   "fetch",
+		Short: "Refresh cached GitHub API responses",
+		Long: `Fetch the latest releases from GitHub and update the local cache.
+
+By default the cache is valid for 6 hours. Use this command to force
+a refresh before the cache expires.
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := gh.NewClient(mgr.CacheDir())
+			fmt.Print("Fetching releases from GitHub...")
+			if err := client.RefreshCache(); err != nil {
+				fmt.Println()
+				return fmt.Errorf("failed to refresh cache: %w", err)
+			}
+			green := color.New(color.FgGreen, color.Bold).SprintFunc()
+			fmt.Printf(" %s cache refreshed\n", green("✓"))
+			return nil
+		},
+	}
 }
 
 func valueOrNone(s string) string {

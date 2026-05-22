@@ -33,16 +33,24 @@ Version can be:
   latest-beta    latest pre-release
   b3412          specific build number
 
-Without a version argument, enters interactive mode (arrow-key selection).
+Without a version argument, defaults to interactive arrow-key selection.
 
 Examples:
   lvm install latest
   lvm install b3412
   lvm install latest --backend vulkan
-  lvm install   # interactive picker`,
+  lvm install   # interactive picker (default)`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Interactive picker — no backend arg allowed.
+			// Default to interactive mode when no version is provided.
+			if len(args) == 0 {
+				if backendFlag != "" {
+					return fmt.Errorf("--backend cannot be used without a version argument")
+				}
+				return installInteractive(useAfter)
+			}
+
+			// Interactive flag overrides: interactive picker.
 			if interactive {
 				if backendFlag != "" {
 					return fmt.Errorf("--backend cannot be used with interactive mode")
@@ -50,17 +58,14 @@ Examples:
 				return installInteractive(useAfter)
 			}
 
-			// Non-interactive: need a version argument.
-			if len(args) == 0 {
-				return fmt.Errorf("version argument required. Try: lvm install latest")
-			}
+			// Non-interactive: install the specified version.
 			return installVersion(args[0], backendFlag, useAfter)
 		},
 	}
 
 	cmd.Flags().StringVar(&backendFlag, "backend", "", "GPU backend: cpu, cuda, metal, vulkan, rocm, sycl-fp16, sycl-fp32, openvino")
 	cmd.Flags().BoolVar(&useAfter, "use", false, "Switch to this version immediately after install")
-	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive arrow-key selection")
+	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Force interactive arrow-key selection")
 	return cmd
 }
 

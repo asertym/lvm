@@ -44,7 +44,8 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 | **One-command init** | Automatic PATH configuration, zero manual setup |
 | **Auto-shims** | All llama.cpp binaries become accessible via simple commands |
 | **Cross-platform** | Works on Windows, Linux, and macOS |
-| **Cache** | Releases are cached for faster subsequent operations |
+| **Cache** | GitHub releases are cached for 6 hours to avoid repeated API calls |
+| **Refresh** | Run `lvm fetch` to manually refresh cached data before TTL expires |
 | **Clean uninstall** | Remove versions without leaving artifacts |
 
 ---
@@ -92,8 +93,8 @@ lvm init
 # 1. Initialize (run once)
 lvm init
 
-# 2. Install latest stable version (auto-detects your platform)
-lvm install latest
+# 2. Install a version (interactive picker by default)
+lvm install
 
 # 3. Start using llama.cpp commands
 llama-cli --help
@@ -121,9 +122,10 @@ lvm install latest --backend cuda
 lvm install b3412 --backend vulkan
 lvm install latest --backend metal
 
-# Interactive picker (arrow-key selection)
-lvm install        # no args → pick from releases list
-lvm install -i     # explicit interactive flag
+# Interactive picker (default when no version given)
+lvm install        # picks from releases list
+lvm install -i     # same, explicit flag
+lvm install latest # non-interactive
 ```
 
 **Available backends:**
@@ -141,9 +143,10 @@ lvm install -i     # explicit interactive flag
 # Switch to a specific installed version
 lvm use b3412-cuda
 
-# Interactive picker (arrow-key selection)
-lvm use            # no args → pick from installed list
-lvm use -i         # explicit interactive flag
+# Interactive picker (default when no version given)
+lvm use            # picks from installed list
+lvm use -i         # same, explicit flag
+lvm use b3412-cuda # non-interactive
 
 # Switch to the stable channel (uses last stable version)
 lvm channel stable
@@ -165,14 +168,20 @@ lvm ls-remote
 lvm current
 ```
 
+### Fetch / Refresh Cache
+
+```bash
+# Manually refresh cached GitHub release data
+lvm fetch
+```
+
+By default, releases are cached for 6 hours. Use `lvm fetch` to force a refresh before the cache expires.
+
 ### Update
 
 ```bash
 # Check for updates to the active version
 lvm update
-
-# Update to latest on the same channel
-lvm update --backend cuda --use
 ```
 
 ### Uninstall
@@ -181,9 +190,10 @@ lvm update --backend cuda --use
 # Remove a specific version
 lvm uninstall b3412-cuda
 
-# Interactive picker (arrow-key selection)
-lvm uninstall      # no args → pick from installed list
-lvm uninstall -i   # explicit interactive flag
+# Interactive picker (default when no version given)
+lvm uninstall      # picks from installed list
+lvm uninstall -i   # same, explicit flag
+lvm uninstall b3412-cuda # non-interactive
 ```
 
 ### Version Information
@@ -286,7 +296,7 @@ lvm uninstall
 ~/.lvm/
 ├── active              # Currently active version ID (e.g., "b3412-cuda")
 ├── channels.json       # Channel state (stable/beta → version IDs)
-├── cache/              # Cached GitHub release data
+├── cache/              # Cached GitHub release data (6-hour TTL)
 │   └── releases_cache.json
 ├── shims/              # Auto-generated shell scripts
 │   ├── llama-cli
@@ -338,7 +348,7 @@ llama-cli.cmd → %LVM_HOME%\shims\llama-cli.cmd
 
 ### Interactive Picker
 
-When called without a version argument (or with `-i`), `use`, `install`, and `uninstall` use a TUI picker built with [charmbracelet/huh](https://github.com/charmbracelet/huh):
+When called without a version argument (or with `-i`), `install`, `use`, and `uninstall` use a TUI picker built with [charmbracelet/huh](https://github.com/charmbracelet/huh):
 
 - **Arrow keys** to navigate
 - **Enter** to confirm

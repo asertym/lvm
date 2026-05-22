@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version = "0.1.0"
+	version = "0.1.2"
 	mgr     *manager.Manager
 )
 
@@ -46,6 +46,7 @@ Run 'lvm init' once to set up your environment.`,
 		cmdListRemote(),
 		cmdUpdate(),
 		cmdChannel(),
+		cmdFetch(),
 		cmdUninstall(),
 		cmdVersion(),
 	)
