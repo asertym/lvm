@@ -100,5 +100,6 @@ jobs:
         with:
           tag_name: ${{ steps.notes.outputs.tag }}
           body: ${{ steps.notes.outputs.body }}
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
