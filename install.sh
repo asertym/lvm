@@ -1,10 +1,10 @@
 #!/bin/sh
 # lvm installer — macOS and Linux
-# Usage: curl -sSL https://github.com/YOURNAME/lvm/releases/latest/download/install.sh | sh
+# Usage: curl -sSL https://github.com/asertym/lvm/releases/latest/download/install.sh | sh
 
 set -e
 
-REPO="YOURNAME/lvm"
+REPO="asertym/lvm"
 BINARY="lvm"
 INSTALL_DIR="/usr/local/bin"
 

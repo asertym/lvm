@@ -1,0 +1,102 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+          - goos: windows
+            goarch: 386
+            ext: .exe
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: linux
+            goarch: arm64
+            ext: ""
+          - goos: linux
+            goarch: 386
+            ext: ""
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+          - goos: darwin
+            goarch: arm64
+            ext: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build lvm (${{ matrix.goos }}/${{ matrix.goarch }})
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -o "dist/lvm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" .
+
+      - name: Upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/lvm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-notes:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          BODY=$(cat <<EOF
+          **Changelog**
+
+          \`\`\`
+          $(git log --format="%s" "${{ github.event.before }}..HEAD" 2>/dev/null || echo "(first release)")
+          \`\`\`
+
+          **Assets**
+
+          - \`lvm-windows-amd64.exe\`
+          - \`lvm-windows-386.exe\`
+          - \`lvm-linux-amd64\`
+          - \`lvm-linux-arm64\`
+          - \`lvm-linux-386\`
+          - \`lvm-darwin-amd64\`
+          - \`lvm-darwin-arm64\`
+          EOF
+          )
+          echo "body<<BODY" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+
+      - name: Update release with notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

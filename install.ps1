@@ -1,11 +1,11 @@
 # lvm installer — Windows (PowerShell)
-# Usage: irm https://github.com/YOURNAME/lvm/releases/latest/download/install.ps1 | iex
+# Usage: irm https://github.com/asertym/lvm/releases/latest/download/install.ps1 | iex
 
 param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Repo    = "YOURNAME/lvm"
+$Repo    = "asertym/lvm"
 $Binary  = "lvm"
 $Asset   = "lvm-windows-amd64.exe"
 $InstallDir = Join-Path $env:USERPROFILE "bin"
