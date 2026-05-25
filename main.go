@@ -8,16 +8,21 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"lvm/internal/manager"
+	"lvm/internal/selfupdate"
 	"lvm/internal/shim"
+	"lvm/internal/updater"
 )
 
 var (
-	version = "0.1.2"
-	mgr     *manager.Manager
+	version    = "0.2.3"
+	mgr        *manager.Manager
+	skipUpdate bool
 )
 
 func main() {
@@ -36,6 +41,8 @@ Install, switch, and update llama.cpp builds across stable and beta channels.
 Run 'lvm init' once to set up your environment.`,
 		SilenceUsage: true,
 	}
+
+	root.PersistentFlags().BoolVar(&skipUpdate, "skip-update-check", false, "Skip the update check")
 
 	root.AddCommand(
 		cmdInit(),
@@ -69,13 +76,78 @@ func lvmHome() (string, error) {
 	return filepath.Join(home, ".lvm"), nil
 }
 
-// cmdVersion prints the lvm version.
+// cmdVersion prints the lvm version and checks for updates.
 func cmdVersion() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print lvm version",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("lvm %s\n", version)
+
+			if skipUpdate {
+				return
+			}
+
+			latest, err := updater.LatestReleaseWithAssets()
+			if err != nil {
+				// Network error — silently skip.
+				return
+			}
+
+			if !updater.SemverLess(version, latest.TagName) {
+				fmt.Printf("  (latest)\n")
+				return
+			}
+
+			if !isatty.IsTerminal(os.Stdin.Fd()) {
+				// Non-interactive: just inform.
+				yellow := color.New(color.FgYellow).SprintFunc()
+				bold := color.New(color.Bold).SprintFunc()
+				fmt.Printf("\n%s %s → %s available!\n", yellow("Update:"), bold(version), latest.TagName)
+				fmt.Printf("  Run 'lvm version' again to install.\n")
+				return
+			}
+
+			var choice string
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Update lvm?").
+						Description("Download and install lvm").
+						Options(
+							huh.NewOption("update", "update"),
+							huh.NewOption("skip for now", "skip"),
+						).Value(&choice),
+				),
+			)
+
+			if err := form.Run(); err != nil {
+				if err == huh.ErrUserAborted {
+					return
+				}
+				fmt.Fprintf(os.Stderr, "update prompt failed: %v\n", err)
+				return
+			}
+
+			if choice != "update" {
+				return
+			}
+
+			// Self-update.
+			asset, err := updater.AssetForPlatform(latest)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "could not find binary for this platform: %v\n", err)
+				return
+			}
+
+			fmt.Printf("Downloading %s...\n", asset.Name)
+			if err := selfupdate.Update(asset.URL, ""); err != nil {
+				fmt.Fprintf(os.Stderr, "update failed: %v\n", err)
+				os.Exit(1)
+			}
+
+			green := color.New(color.FgGreen, color.Bold).SprintFunc()
+			fmt.Printf("\n%s Updated to %s. Restart lvm to use the new version.\n", green("✓"), latest.TagName)
 		},
 	}
 }
