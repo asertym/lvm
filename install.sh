@@ -21,7 +21,7 @@ detect_platform() {
 
   case "$OS" in
     linux)  OS="linux"  ;;
-    darwin) OS="macos"  ;;
+    darwin) OS="darwin"  ;;
     *)
       red "Unsupported OS: $OS"
       exit 1
