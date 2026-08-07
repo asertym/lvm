@@ -1,6 +1,9 @@
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
 $Repo    = "asertym/lvm"
 $Binary  = "lvm"
-$Asset   = "lvm-windows-amd64.exe"
+$Arch    = if ([Environment]::Is64BitOperatingSystem -and ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64")) { "arm64" } else { "amd64" }
+$Asset   = "lvm-windows-$Arch.exe"
 $InstallDir = Join-Path $env:USERPROFILE "bin"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -59,8 +62,15 @@ function Install-Binary
     }
 
     $dest = Join-Path $InstallDir "$Binary.exe"
-    Copy-Item -Path $TmpPath -Destination $dest -Force
-    Remove-Item $TmpPath -Force
+    try
+    {
+        Copy-Item -Path $TmpPath -Destination $dest -Force
+        Remove-Item $TmpPath -Force
+    } catch
+    {
+        Write-Red "Install failed: $_"
+        exit 1
+    }
 
     Write-Green "Installed $Binary to $dest"
     return $dest
@@ -81,7 +91,14 @@ function Add-ToPath
     }
 
     $newPath = ($InstallDir + ';' + ($parts -join ';')).TrimEnd(';')
-    Set-ItemProperty -Path $regPath -Name PATH -Value $newPath -Type ExpandString
+    try
+    {
+        Set-ItemProperty -Path $regPath -Name PATH -Value $newPath -Type ExpandString
+    } catch
+    {
+        Write-Red "Could not update PATH: $_"
+        return
+    }
 
     Write-Green "Added $InstallDir to user PATH"
 
