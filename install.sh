@@ -66,17 +66,17 @@ download_binary() {
   URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
   TMP=$(mktemp)
 
-  printf "Downloading %s %s (%s/%s)...\n" "$BINARY" "$VERSION" "$OS" "$ARCH"
+  printf "Downloading %s %s (%s/%s)...\n" "$BINARY" "$VERSION" "$OS" "$ARCH" >&2
 
   if command -v curl >/dev/null 2>&1; then
     curl -sSfL "$URL" -o "$TMP" || {
-      red "Download failed: $URL"
+      red "Download failed: $URL" >&2
       rm -f "$TMP"
       exit 1
     }
   else
     wget -qO "$TMP" "$URL" || {
-      red "Download failed: $URL"
+      red "Download failed: $URL" >&2
       rm -f "$TMP"
       exit 1
     }
@@ -116,6 +116,13 @@ add_to_path() {
   case "$SHELL_NAME" in
     zsh)  RC="$HOME/.zshrc" ;;
     fish) RC="$HOME/.config/fish/config.fish" ;;
+    bash)
+      if [ "$(uname -s)" = "Darwin" ]; then
+        RC="$HOME/.bash_profile"
+      else
+        RC="$HOME/.bashrc"
+      fi
+      ;;
     *)    RC="$HOME/.bashrc" ;;
   esac
 
