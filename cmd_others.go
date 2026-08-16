@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -113,13 +116,10 @@ func useVersion(id string) error {
 	return switchTo(id, ch)
 }
 
-// switchTo updates the active pointer and channel state, then prints confirmation.
+// switchTo atomically updates both active and channel state, then prints confirmation.
 func switchTo(id string, ch manager.Channel) error {
-	if err := mgr.SetActive(id); err != nil {
-		return fmt.Errorf("could not set active version: %w", err)
-	}
-	if err := mgr.SetChannelVersion(ch, id); err != nil {
-		return fmt.Errorf("could not update channel: %w", err)
+	if err := mgr.SwitchActiveAndChannel(id, ch); err != nil {
+		return fmt.Errorf("could not switch state: %w", err)
 	}
 
 	green := color.New(color.FgGreen, color.Bold).SprintFunc()
@@ -241,6 +241,13 @@ func cmdListRemote() *cobra.Command {
 			dim := color.New(color.Faint).SprintFunc()
 			yellow := color.New(color.FgYellow).SprintFunc()
 
+			// Build a set of installed build tags for O(1) lookup.
+			installedBuilds := make(map[string]bool)
+			installedVersions, _ := mgr.ListInstalled()
+			for _, v := range installedVersions {
+				installedBuilds[v.Build] = true
+			}
+
 			count := 0
 			for _, r := range releases {
 				if !showBeta && r.PreRelease {
@@ -260,13 +267,8 @@ func cmdListRemote() *cobra.Command {
 				}
 
 				installed := ""
-				// Check if any variant of this build is installed.
-				versions, _ := mgr.ListInstalled()
-				for _, v := range versions {
-					if v.Build == r.TagName {
-						installed = color.New(color.FgGreen).Sprint("  ✓ installed")
-						break
-					}
+				if installedBuilds[r.TagName] {
+					installed = color.New(color.FgGreen).Sprint("  ✓ installed")
 				}
 
 				fmt.Printf("  %s%s%s%s\n", r.TagName, label, date, installed)
@@ -302,7 +304,7 @@ func cmdUpdate() *cobra.Command {
 			}
 
 			client := gh.NewClient(mgr.CacheDir())
-			_ = client.InvalidateCache() // force fresh check
+			_ = client.InvalidateCacheIfNeeded() // only invalidate if cache is stale or missing
 
 			var release *gh.Release
 			if manifest.Channel == manager.ChannelBeta {
@@ -477,17 +479,17 @@ func uninstallInteractive(versions []manager.Version) error {
 	var selectedID string
 	active := mgr.Active()
 
-	options := make([]huh.Option[string], 0, len(versions))
+	// Exclude the active version entirely from the picker.
+	options := make([]huh.Option[string], 0, len(versions)-1)
 	for _, v := range versions {
-		label := v.ID
 		if v.ID == active {
-			label = v.ID + " " + color.New(color.FgRed).Sprint("[active — cannot remove]")
+			continue
 		}
-		options = append(options, huh.NewOption(label, v.ID))
+		options = append(options, huh.NewOption(v.ID, v.ID))
 	}
 
 	if len(options) == 0 {
-		return fmt.Errorf("no versions installed")
+		return fmt.Errorf("no removable versions (active version %q cannot be removed)", active)
 	}
 
 	a := isatty.IsTerminal(os.Stdin.Fd())
@@ -495,7 +497,7 @@ func uninstallInteractive(versions []manager.Version) error {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Select a version to remove").
-				Description("Cannot remove the active version. Arrow keys to navigate, Enter to confirm").
+				Description("Arrow keys to navigate, Enter to confirm").
 				Options(options...).Value(&selectedID),
 		),
 	)
@@ -508,10 +510,6 @@ func uninstallInteractive(versions []manager.Version) error {
 			return nil
 		}
 		return fmt.Errorf("selection aborted: %w", err)
-	}
-
-	if selectedID == active {
-		return fmt.Errorf("cannot remove active version %q — run 'lvm use <other>' first", selectedID)
 	}
 
 	if err := mgr.Remove(selectedID); err != nil {
@@ -527,6 +525,10 @@ func uninstallVersion(id string) error {
 	if err := mgr.Remove(id); err != nil {
 		return err
 	}
+	// Clear stale channel references and active pointer if they pointed here.
+	if err := mgr.ClearStaleChannelReferences(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not clear stale references: %v\n", err)
+	}
 	green := color.New(color.FgGreen, color.Bold).SprintFunc()
 	fmt.Printf("%s Removed %s\n", green("✓"), id)
 	return nil
@@ -537,21 +539,20 @@ func uninstallVersion(id string) error {
 func cmdFetch() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fetch",
-		Short: "Refresh cached GitHub API responses",
-		Long: `Fetch the latest releases from GitHub and update the local cache.
+		Short: "Fetch and cache the latest GitHub releases",
+		Long: `Fetch the latest releases from GitHub and save them to the local cache.
 
-By default the cache is valid for 6 hours. Use this command to force
-a refresh before the cache expires.
+The cache is valid for 6 hours by default. Use this command to force
+a fresh fetch before the cache expires, or when you suspect stale data.
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := gh.NewClient(mgr.CacheDir())
-			fmt.Print("Fetching releases from GitHub...")
+			fmt.Print("Fetching releases from GitHub... ")
 			if err := client.RefreshCache(); err != nil {
-				fmt.Println()
-				return fmt.Errorf("failed to refresh cache: %w", err)
+				return fmt.Errorf("failed to fetch: %w", err)
 			}
 			green := color.New(color.FgGreen, color.Bold).SprintFunc()
-			fmt.Printf(" %s cache refreshed\n", green("✓"))
+			fmt.Printf("%s cache updated\n", green("✓"))
 			return nil
 		},
 	}
@@ -562,4 +563,246 @@ func valueOrNone(s string) string {
 		return color.New(color.Faint).Sprint("(none)")
 	}
 	return s
+}
+
+// --- lvm uninstall-self ---
+
+func cmdUninstallSelf() *cobra.Command {
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "uninstall-self",
+		Short: "Uninstall lvm completely from your machine",
+		Long: `Completely remove lvm from your system.
+
+This will:
+  - Delete the lvm home directory (~/.lvm or $LVM_HOME)
+  - Remove the lvm binary from standard locations
+  - Remove lvm PATH entries from shell profiles (Unix) or user PATH (Windows)
+
+The installed llama.cpp versions will also be removed.
+
+Use --yes to skip the confirmation prompt.
+`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// 1. Determine lvm home.
+			lvmHome, err := lvmHome()
+			if err != nil {
+				return fmt.Errorf("cannot determine lvm home: %w", err)
+			}
+
+			// 2. Ask for confirmation.
+			if !force {
+				var confirm string
+				a := isatty.IsTerminal(os.Stdin.Fd())
+				form := huh.NewForm(
+					huh.NewGroup(
+						huh.NewSelect[string]().
+							Title("Uninstall lvm?").
+							Description("This will remove all llama.cpp versions, shims, and configuration.").
+							Options(
+								huh.NewOption("uninstall", "yes"),
+								huh.NewOption("cancel", "no"),
+							).Value(&confirm),
+					),
+				)
+				if a {
+					form = form.WithAccessible(false)
+				}
+
+				if err := form.Run(); err != nil {
+					if err == huh.ErrUserAborted {
+						return nil
+					}
+					return fmt.Errorf("confirmation aborted: %w", err)
+				}
+
+				if confirm != "yes" {
+					return nil
+				}
+			}
+
+			green := color.New(color.FgGreen, color.Bold).SprintFunc()
+			yellow := color.New(color.FgYellow).SprintFunc()
+
+			// 3. Remove lvm home directory.
+			if err := os.RemoveAll(lvmHome); err != nil {
+				// Don't abort — try to clean up the rest.
+				fmt.Fprintf(os.Stderr, "%s Could not remove %s: %v\n", yellow("⚠"), lvmHome, err)
+			} else {
+				fmt.Printf("%s Removed %s\n", green("✓"), lvmHome)
+			}
+
+			// 4. Remove lvm binary.
+			removeLvmBinary()
+
+			// 5. Clean PATH entries.
+			cleanPathForUninstall()
+
+			fmt.Println()
+			bold := color.New(color.Bold).SprintFunc()
+			fmt.Printf("%s lvm has been uninstalled.\n", bold("Done"))
+			fmt.Println()
+
+			// Warn about custom LVM_HOME.
+			if os.Getenv("LVM_HOME") != "" && os.Getenv("LVM_HOME") != lvmHome {
+				fmt.Printf("%s Warning: $LVM_HOME is set to a custom path that was not cleaned up:\n", yellow("⚠"))
+				fmt.Printf("   %s\n", os.Getenv("LVM_HOME"))
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&force, "yes", false, "Skip confirmation prompt")
+	return cmd
+}
+
+// removeLvmBinary attempts to remove the lvm binary from standard install locations.
+func removeLvmBinary() {
+	locations := []string{
+		"/usr/local/bin/lvm",
+		"/usr/bin/lvm",
+		"/opt/local/bin/lvm",
+		"/usr/sbin/lvm",
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		locations = append(locations,
+			filepath.Join(home, "bin", "lvm"),
+		)
+	}
+	for _, loc := range locations {
+		if _, err := os.Stat(loc); err == nil {
+			if err := os.Remove(loc); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not remove %s: %v\n", loc, err)
+			} else {
+				fmt.Printf("✓ Removed %s\n", loc)
+			}
+		}
+	}
+	// Windows: %USERPROFILE%\bin\lvm.exe
+	if runtime.GOOS == "windows" && home != "" {
+		winLoc := filepath.Join(home, "bin", "lvm.exe")
+		if _, err := os.Stat(winLoc); err == nil {
+			if err := os.Remove(winLoc); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not remove %s: %v\n", winLoc, err)
+			} else {
+				fmt.Printf("✓ Removed %s\n", winLoc)
+			}
+		}
+	}
+}
+
+// cleanPathForUninstall removes lvm-related entries from shell profiles (Unix)
+// or the Windows user PATH registry entry.
+func cleanPathForUninstall() {
+	if runtime.GOOS == "windows" {
+		cleanWindowsPath()
+		return
+	}
+	cleanUnixShellProfiles()
+}
+
+// cleanUnixShellProfiles removes lvm-related lines from found shell profile files.
+func cleanUnixShellProfiles() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	lvmHome, _ := lvmHome()
+	shimLine := "export PATH=\"" + filepath.Join(lvmHome, "shims") + ":$PATH\""
+	profiles := []string{".zshrc", ".bashrc", ".bash_profile", ".profile"}
+	for _, profile := range profiles {
+		profilePath := filepath.Join(home, profile)
+		data, err := os.ReadFile(profilePath)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		var cleaned []string
+		removed := false
+		for _, line := range lines {
+			if strings.TrimSpace(line) == shimLine {
+				removed = true
+				continue
+			}
+			// install.sh adds: export PATH="/usr/local/bin:$PATH"
+			if strings.TrimSpace(line) == "export PATH=\"/usr/local/bin:$PATH\"" {
+				removed = true
+				continue
+			}
+			cleaned = append(cleaned, line)
+		}
+		if removed {
+			if err := os.WriteFile(profilePath, []byte(strings.Join(cleaned, "\n")), 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not clean %s: %v\n", profile, err)
+			} else {
+				fmt.Printf("✓ Cleaned ~/%s\n", profile)
+			}
+		}
+	}
+}
+
+// cleanWindowsPath removes lvm-related paths from the user PATH registry entry.
+func cleanWindowsPath() {
+	lvmHome, _ := lvmHome()
+	toRemove := []string{
+		filepath.Join(lvmHome, "shims"),
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		toRemove = append(toRemove, filepath.Join(home, "bin"))
+	}
+	out, err := exec.Command("powershell", "-NoProfile", "-Command",
+		`[Environment]::GetEnvironmentVariable('PATH', 'User')`).CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not read user PATH: %v\n", err)
+		return
+	}
+	currentPath := strings.TrimSpace(string(out))
+	parts := strings.Split(currentPath, ";")
+	var kept []string
+	removed := false
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		skip := false
+		for _, remove := range toRemove {
+			if p == remove {
+				skip = true
+				removed = true
+				break
+			}
+		}
+		if !skip {
+			kept = append(kept, p)
+		}
+	}
+	if !removed {
+		return
+	}
+	newPath := strings.Join(kept, ";")
+	cmdStr := fmt.Sprintf(
+		`Set-ItemProperty -Path 'HKCU:\Environment' -Name 'PATH' -Value '%s' -Type ExpandString`,
+		newPath,
+	)
+	if err := exec.Command("powershell", "-NoProfile", "-Command", cmdStr).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not update user PATH: %v\n", err)
+		return
+	}
+	fmt.Println("✓ Cleaned user PATH (registry)")
+	// Broadcast so new terminals pick up the change.
+	exec.Command("powershell", "-NoProfile", "-Command",
+		`$signature = @'
+[DllImport("user32.dll", SetLastError=true, CharSet=CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+'@
+	$null = Add-Type -MemberDefinition $signature -Name WinEnv -Namespace Win32 -PassThru
+	$result = [UIntPtr]::Zero
+	[Win32.WinEnv]::SendMessageTimeout([IntPtr]0xffff, 0x001A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result) | Out-Null`,
+	).Run() // best-effort
 }

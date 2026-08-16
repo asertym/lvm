@@ -55,6 +55,7 @@ Run 'lvm init' once to set up your environment.`,
 		cmdChannel(),
 		cmdFetch(),
 		cmdUninstall(),
+		cmdUninstallSelf(),
 		cmdVersion(),
 	)
 
@@ -193,31 +194,38 @@ func cmdInit() *cobra.Command {
 					return fmt.Errorf("failed to update Windows PATH: %w", err)
 				}
 			} else {
-				// Unix: append to the first available standard shell profile.
+				// Unix: append to ALL existing standard shell profiles (not just the first).
 				home, _ := os.UserHomeDir()
 				profiles := []string{".zshrc", ".bashrc", ".bash_profile", ".profile"}
 				line := fmt.Sprintf("\n# lvm\nexport PATH=\"%s:$PATH\"\n", shimsDir)
-				updated := false
 				for _, p := range profiles {
-					path := filepath.Join(home, p)
-					if _, err := os.Stat(path); err == nil {
-						data, _ := os.ReadFile(path)
-						if strings.Contains(string(data), shimsDir) {
-							fmt.Printf("%s PATH already configured in ~/%s\n", green("✓"), p)
-						} else {
-							f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-							if err != nil {
-								return fmt.Errorf("could not update %s: %w", p, err)
-							}
-							f.WriteString(line)
-							f.Close()
-							fmt.Printf("%s Added to ~/%s\n", green("✓"), p)
+					profilePath := filepath.Join(home, p)
+					if _, err := os.Stat(profilePath); err != nil {
+						continue
+					}
+					data, _ := os.ReadFile(profilePath)
+					if strings.Contains(string(data), shimsDir) {
+						fmt.Printf("%s PATH already configured in ~/%s\n", green("✓"), p)
+					} else {
+						f, err := os.OpenFile(profilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "warning: could not update ~/%s: %v\n", p, err)
+							continue
 						}
-						updated = true
+						f.WriteString(line)
+						f.Close()
+						fmt.Printf("%s Added to ~/%s\n", green("✓"), p)
+					}
+				}
+				// Check if at least one profile was found.
+				foundAny := false
+				for _, p := range profiles {
+					if _, err := os.Stat(filepath.Join(home, p)); err == nil {
+						foundAny = true
 						break
 					}
 				}
-				if !updated {
+				if !foundAny {
 					fmt.Printf("%s No standard shell profile found. Please add PATH manually.\n", color.YellowString("⚠"))
 				}
 			}

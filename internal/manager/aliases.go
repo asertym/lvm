@@ -11,21 +11,18 @@ import (
 //	main       → llama-cli
 //	server     → llama-server
 //	quantize   → llama-quantize
-//	embedding  → llama-embedding
 //	perplexity → llama-perplexity
 //	imatrix    → llama-imatrix
-//	simple     → llama-simple
+//	tokenize   → tokenize
+//	bench      → llama-bench
 var legacyNames = map[string][]string{
 	"llama-cli":        {"main"},
 	"llama-server":     {"server"},
 	"llama-quantize":   {"quantize"},
-	"llama-embedding":  {"embedding"},
 	"llama-perplexity": {"perplexity"},
 	"llama-tokenize":   {"tokenize"},
 	"llama-bench":      {"llama-bench"},
-	"llama-run":        {"llama-run"},
 	"llama-imatrix":    {"imatrix"},
-	"llama-simple":     {"simple"},
 }
 
 // ResolveAliases returns a canonical-name → real-filename map for the given

@@ -6,16 +6,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
-	"github.com/charmbracelet/huh"
 
 	gh "lvm/internal/github"
 	"lvm/internal/installer"
 	"lvm/internal/manager"
 	"lvm/internal/platform"
 	"lvm/internal/shim"
+	"lvm/internal/updater"
 )
 
 func cmdInstall() *cobra.Command {
@@ -44,18 +45,12 @@ Examples:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Default to interactive mode when no version is provided.
 			if len(args) == 0 {
-				if backendFlag != "" {
-					return fmt.Errorf("--backend cannot be used without a version argument")
-				}
-				return installInteractive(useAfter)
+				return installInteractive(backendFlag, useAfter)
 			}
 
 			// Interactive flag overrides: interactive picker.
 			if interactive {
-				if backendFlag != "" {
-					return fmt.Errorf("--backend cannot be used with interactive mode")
-				}
-				return installInteractive(useAfter)
+				return installInteractive(backendFlag, useAfter)
 			}
 
 			// Non-interactive: install the specified version.
@@ -71,6 +66,14 @@ Examples:
 
 // installVersion is the non-interactive install flow (kept for reuse and backward compat).
 func installVersion(versionArg, backendFlag string, useAfter bool) error {
+	// Check for lvm update before starting install (unless skipped).
+	if !skipUpdate {
+		latest, err := updater.LatestReleaseWithAssets()
+		if err == nil && updater.SemverLess(version, latest.TagName) {
+			fmt.Printf("(lvm %s → %s available)\n", version, latest.TagName)
+		}
+	}
+
 	// Resolve platform.
 	var plat *platform.Info
 	var err error
@@ -134,6 +137,11 @@ func installVersion(versionArg, backendFlag string, useAfter bool) error {
 	}
 	fmt.Printf("Asset: %s (%.1f MB)\n", asset.Name, float64(asset.Size)/1e6)
 
+	// Validate asset exists before starting download (#15: upfront validation).
+	if err := gh.AssetExists(asset.BrowserDownloadURL); err != nil {
+		return fmt.Errorf("asset validation failed: %w", err)
+	}
+
 	// Resolve checksum if available (best-effort).
 	sha256 := ""
 	if sumAsset := release.FindSHASUM(asset.Name); sumAsset != nil {
@@ -190,7 +198,8 @@ func installVersion(versionArg, backendFlag string, useAfter bool) error {
 }
 
 // installInteractive shows a huh-based picker for available releases.
-func installInteractive(useAfter bool) error {
+// backendFlag is an optional backend override (from --backend flag).
+func installInteractive(backendFlag string, useAfter bool) error {
 	client := gh.NewClient(mgr.CacheDir())
 	releases, err := client.ListReleases()
 	if err != nil {
@@ -267,8 +276,8 @@ func installInteractive(useAfter bool) error {
 	}
 
 	// Determine backend.
-	backendToUse := ""
-	if useAfter {
+	backendToUse := backendFlag
+	if backendToUse == "" && useAfter {
 		// If --use was passed interactively, ask for backend first.
 		backends := []string{"cpu", "cuda", "metal", "vulkan", "rocm"}
 		beOptions := make([]huh.Option[string], 0, len(backends))
@@ -295,16 +304,30 @@ func installInteractive(useAfter bool) error {
 		}
 		backendToUse = selectedBackend
 	}
-	_ = backendToUse // we don't auto-use in the current flow, just install
 
-	// Install with detected backend.
-	return installSingleRelease(release, useAfter)
+	// Install with the selected backend.
+	return installSingleRelease(release, backendToUse, useAfter)
 }
 
-// installSingleRelease installs a single release using auto-detected backend.
-func installSingleRelease(release *gh.Release, useAfter bool) error {
-	// Resolve platform with auto-detection.
-	plat, err := platform.Detect()
+// installSingleRelease installs a single release using the given backend.
+// If backend is empty, auto-detects. If specified, uses that backend override.
+func installSingleRelease(release *gh.Release, backend string, useAfter bool) error {
+	// Check for lvm update before starting install (unless skipped).
+	if !skipUpdate {
+		latest, err := updater.LatestReleaseWithAssets()
+		if err == nil && updater.SemverLess(version, latest.TagName) {
+			fmt.Printf("(lvm %s → %s available)\n", version, latest.TagName)
+		}
+	}
+
+	// Resolve platform with optional backend override.
+	var plat *platform.Info
+	var err error
+	if backend != "" {
+		plat, err = platform.DetectWithBackend(backend)
+	} else {
+		plat, err = platform.Detect()
+	}
 	if err != nil {
 		return err
 	}
@@ -336,6 +359,11 @@ func installSingleRelease(release *gh.Release, useAfter bool) error {
 		return err
 	}
 	fmt.Printf("Asset: %s (%.1f MB)\n", asset.Name, float64(asset.Size)/1e6)
+
+	// Validate asset exists before starting download (#15: upfront validation).
+	if err := gh.AssetExists(asset.BrowserDownloadURL); err != nil {
+		return fmt.Errorf("asset validation failed: %w", err)
+	}
 
 	// Resolve checksum if available (best-effort).
 	sha256 := ""

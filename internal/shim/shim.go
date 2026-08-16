@@ -11,16 +11,27 @@ import (
 
 // KnownBinaries is the canonical set of llama.cpp command names.
 var KnownBinaries = []string{
-	"llama-cli",
-	"llama-server",
+	"llama",
+	"llama-batched-bench",
 	"llama-bench",
-	"llama-quantize",
-	"llama-embedding",
-	"llama-perplexity",
-	"llama-tokenize",
-	"llama-run",
-	"llama-simple",
+	"llama-cli",
+	"llama-completion",
+	"llama-fit-params",
+	"llama-gemma3-cli",
+	"llama-gguf-split",
 	"llama-imatrix",
+	"llama-llava-cli",
+	"llama-minicpmv-cli",
+	"llama-mtmd-cli",
+	"llama-mtmd-debug",
+	"llama-perplexity",
+	"llama-quantize",
+	"llama-qwen2vl-cli",
+	"llama-results",
+	"llama-server",
+	"llama-template-analysis",
+	"llama-tokenize",
+	"llama-tts",
 }
 
 // Manager handles shim creation and updates.
@@ -38,9 +49,21 @@ func NewManager(shimsDir, lvmHome string) *Manager {
 }
 
 // EnsureAll creates shims for all known binaries if they don't exist yet.
+// Also validates that the active version directory still exists.
 func (m *Manager) EnsureAll() error {
 	if err := os.MkdirAll(m.shimsDir, 0755); err != nil {
 		return fmt.Errorf("cannot create shims dir: %w", err)
+	}
+	// Validate active version still exists.
+	activeData, err := os.ReadFile(filepath.Join(m.lvmHome, "active"))
+	if err == nil {
+		activeID := strings.TrimSpace(string(activeData))
+		if activeID != "" {
+			activeDir := filepath.Join(m.lvmHome, "versions", activeID)
+			if _, statErr := os.Stat(activeDir); os.IsNotExist(statErr) {
+				return fmt.Errorf("active version %q directory missing — run 'lvm use <version>' to select a valid version", activeID)
+			}
+		}
 	}
 	for _, name := range KnownBinaries {
 		if err := m.Ensure(name); err != nil {

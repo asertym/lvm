@@ -128,14 +128,37 @@ func (r *Release) FindAsset(suffix string) (*Asset, error) {
 		}
 	}
 
-	// List available assets in the error so the user can pick manually.
-	names := make([]string, 0, len(r.Assets))
+	// Detect available backends from asset names.
+	backends := make(map[string]bool)
 	for _, a := range r.Assets {
-		names = append(names, a.Name)
+		name := strings.ToLower(a.Name)
+		if strings.Contains(name, "cuda") {
+			backends["cuda"] = true
+		}
+		if strings.Contains(name, "rocm") || strings.Contains(name, "rocm") {
+			backends["rocm"] = true
+		}
+		if strings.Contains(name, "vulkan") {
+			backends["vulkan"] = true
+		}
+		if strings.Contains(name, "sycl") {
+			backends["sycl"] = true
+		}
+		if strings.Contains(name, "openvino") {
+			backends["openvino"] = true
+		}
+		// CPU builds have no backend keyword in their name.
+		backends["cpu"] = true
 	}
+
+	backendList := make([]string, 0, len(backends))
+	for b := range backends {
+		backendList = append(backendList, b)
+	}
+
 	return nil, fmt.Errorf(
-		"no asset matching %q found in release %s\navailable assets:\n  %s",
-		suffix, r.TagName, strings.Join(names, "\n  "),
+		"no asset matching %q found in release %s\n  available backends: %s\n  run 'lvm ls-remote' to see available assets",
+		suffix, r.TagName, strings.Join(backendList, ", "),
 	)
 }
 
@@ -153,6 +176,18 @@ func (r *Release) FindSHASUM(assetName string) *Asset {
 			}
 		}
 	}
+	return nil
+}
+
+// InvalidateCacheIfNeeded deletes the cache only if it's stale or missing.
+// This avoids unnecessary API calls when the cached data is still fresh.
+func (c *Client) InvalidateCacheIfNeeded() error {
+	_, err := c.loadCache()
+	if err != nil {
+		// Cache is expired or missing — invalidate to force a fresh fetch.
+		return os.Remove(c.cachePath())
+	}
+	// Cache is fresh — no need to invalidate.
 	return nil
 }
 
@@ -255,6 +290,21 @@ func (c *Client) saveCache(releases []Release) error {
 		FetchedAt: time.Now(),
 		Releases:  releases,
 	})
+}
+
+// AssetExists checks if a URL returns HTTP 200 (HEAD request, no body download).
+// This is used for upfront validation before starting large downloads.
+func AssetExists(url string) error {
+	resp, err := http.Head(url)
+	if err != nil {
+		return fmt.Errorf("HEAD request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("asset not available (HTTP %d): %s", resp.StatusCode, url)
+	}
+	return nil
 }
 
 // DownloadFile downloads a URL to a local path, reporting progress via the callback.

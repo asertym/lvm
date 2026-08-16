@@ -16,36 +16,51 @@ import (
 )
 
 // Install downloads and extracts a release asset into destDir.
-// destDir will be created if it doesn't exist.
+// destDir will be created if it doesn't exist. On error, destDir is cleaned up.
 func Install(asset *Asset, destDir string, progress func(downloaded, total int64)) error {
+	// Create destDir for extraction.
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("cannot create version dir: %w", err)
 	}
 
-	// Download to a temp file.
-	tmpFile := filepath.Join(os.TempDir(), asset.Name)
-	defer os.Remove(tmpFile)
+	// Download to a unique temp file to avoid collisions with concurrent installs.
+	tmpFile, err := os.CreateTemp(os.TempDir(), "lvm-*")
+	if err != nil {
+		return fmt.Errorf("cannot create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+	tmpFile.Close()
 
-	if err := gh.DownloadFile(asset.URL, tmpFile, progress); err != nil {
-		return err
+	if err := gh.DownloadFile(asset.URL, tmpPath, progress); err != nil {
+		os.RemoveAll(destDir)
+		return fmt.Errorf("download failed: %w", err)
 	}
 
 	// Verify checksum if provided.
 	if asset.SHA256 != "" {
-		if err := verifySHA256(tmpFile, asset.SHA256); err != nil {
+		if err := verifySHA256(tmpPath, asset.SHA256); err != nil {
+			os.RemoveAll(destDir)
 			return err
 		}
 	}
 
 	// Extract.
+	var extractErr error
 	if strings.HasSuffix(asset.Name, ".tar.gz") || strings.HasSuffix(asset.Name, ".tgz") {
-		return extractTarGz(tmpFile, destDir)
-	}
-	if strings.HasSuffix(asset.Name, ".zip") {
-		return extractZip(tmpFile, destDir)
+		extractErr = extractTarGz(tmpPath, destDir)
+	} else if strings.HasSuffix(asset.Name, ".zip") {
+		extractErr = extractZip(tmpPath, destDir)
+	} else {
+		extractErr = fmt.Errorf("unsupported archive format: %s", asset.Name)
 	}
 
-	return fmt.Errorf("unsupported archive format: %s", asset.Name)
+	if extractErr != nil {
+		os.RemoveAll(destDir)
+		return extractErr
+	}
+
+	return nil
 }
 
 // Asset holds everything needed to download and verify a release binary.
@@ -120,6 +135,10 @@ func extractTarGz(src, destDir string) error {
 			if err := writeFile(target, tr, hdr.FileInfo().Mode()); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			fmt.Fprintf(os.Stderr, "warning: skipping symlink %s -> %s\n", rel, hdr.Linkname)
+		default:
+			fmt.Fprintf(os.Stderr, "warning: skipping unsupported tar entry %s (type %d)\n", rel, hdr.Typeflag)
 		}
 	}
 	return nil
@@ -143,6 +162,12 @@ func extractZip(src, destDir string) error {
 
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(target, 0755)
+			continue
+		}
+
+		// Skip symlinks — zip stores them as regular files with UnixAttr in ExternalAttrs.
+		if f.ExternalAttrs>>16&0xA000 == 0xA000 {
+			fmt.Fprintf(os.Stderr, "warning: skipping symlink %s\n", rel)
 			continue
 		}
 

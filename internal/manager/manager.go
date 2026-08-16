@@ -99,17 +99,131 @@ func (m *Manager) Init() error {
 }
 
 // Active returns the currently active version ID, or empty string if none.
+// If active and channels are out of sync (crash recovery), the stale channel
+// entry is cleared and "" is returned to trigger re-selection.
 func (m *Manager) Active() string {
 	data, err := os.ReadFile(m.ActiveFile())
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(data))
+	active := strings.TrimSpace(string(data))
+	if active == "" {
+		return ""
+	}
+
+	// Crash recovery: if active exists but channels doesn't know about it,
+	// clear the stale channel entry.
+	ch, chErr := m.LoadChannels()
+	if chErr == nil {
+		chFile := filepath.Join(m.home, "channels.json")
+		actInfo, actErr := os.Stat(m.ActiveFile())
+		if actErr == nil {
+			chInfo, chInfoErr := os.Stat(chFile)
+			if chInfoErr == nil && actInfo.ModTime().After(chInfo.ModTime()) {
+				// Active is newer than channels — channels may be stale.
+				manifest, mErr := m.ReadManifest(active)
+				if mErr == nil {
+					needsClear := false
+					switch manifest.Channel {
+					case ChannelStable:
+						needsClear = ch.Stable != active
+					case ChannelBeta:
+						needsClear = ch.Beta != active
+					}
+					if needsClear {
+						switch manifest.Channel {
+						case ChannelStable:
+							ch.Stable = ""
+						case ChannelBeta:
+							ch.Beta = ""
+						}
+						m.SaveChannels(ch)
+					}
+				}
+			}
+		}
+	}
+	return active
 }
 
 // SetActive writes a version ID as the active version.
+// Deprecated: use SwitchActiveAndChannel for atomic state updates.
 func (m *Manager) SetActive(id string) error {
 	return os.WriteFile(m.ActiveFile(), []byte(id), 0644)
+}
+
+// SwitchActiveAndChannel atomically writes both the active version and its
+// channel entry in channels.json. Uses a single atomic write pattern:
+// write temp file → rename. This prevents state drift if the process crashes
+// between writes.
+func (m *Manager) SwitchActiveAndChannel(id string, ch Channel) error {
+	// Write channels.json atomically (temp + rename).
+	chPath := filepath.Join(m.home, "channels.json")
+	chTmp := chPath + ".tmp"
+	channels, err := m.LoadChannels()
+	if err != nil {
+		return err
+	}
+	switch ch {
+	case ChannelStable:
+		channels.Stable = id
+	case ChannelBeta:
+		channels.Beta = id
+	default:
+		return fmt.Errorf("unknown channel: %s", ch)
+	}
+	if err := atomicWriteFile(chTmp, func() ([]byte, error) {
+		buf, err := json.Marshal(channels)
+		if err != nil {
+			return nil, err
+		}
+		buf = append(buf, '\n')
+		return buf, nil
+	}); err != nil {
+		os.Remove(chTmp) // best-effort cleanup
+		return err
+	}
+	if err := os.Rename(chTmp, chPath); err != nil {
+		os.Remove(chTmp)
+		return err
+	}
+
+	// Write active atomically (temp + rename).
+	actPath := m.ActiveFile()
+	actTmp := actPath + ".tmp"
+	data := []byte(id + "\n")
+	if err := atomicWriteFile(actTmp, func() ([]byte, error) {
+		return data, nil
+	}); err != nil {
+		os.Remove(actTmp)
+		return err
+	}
+	return os.Rename(actTmp, actPath)
+}
+
+// atomicWriteFile writes data to a temp file then renames it into place.
+// The dataFn produces the bytes and is only called once.
+func atomicWriteFile(tmpPath string, dataFn func() ([]byte, error)) error {
+	tmpF, err := os.Create(tmpPath)
+	if err != nil {
+		return err
+	}
+	data, err := dataFn()
+	if err != nil {
+		tmpF.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if _, err := tmpF.Write(data); err != nil {
+		tmpF.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmpF.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return nil
 }
 
 // IsInstalled checks whether a version ID is installed locally.
@@ -252,10 +366,50 @@ func (m *Manager) Remove(id string) error {
 
 	active := m.Active()
 	if active == id {
-		return fmt.Errorf("cannot remove active version %q — run `lvm use <other>` first", id)
+		return fmt.Errorf("cannot remove active version %q — run 'lvm use <other>' first", id)
 	}
 
 	return os.RemoveAll(dir)
+}
+
+// ClearStaleChannelReferences clears channels.json entries that point to
+// uninstalled versions. Also clears active if it points to a removed version.
+func (m *Manager) ClearStaleChannelReferences() error {
+	ch, err := m.LoadChannels()
+	if err != nil {
+		return err
+	}
+	cleared := false
+	if ch.Stable != "" && !m.IsInstalled(ch.Stable) {
+		ch.Stable = ""
+		cleared = true
+	}
+	if ch.Beta != "" && !m.IsInstalled(ch.Beta) {
+		ch.Beta = ""
+		cleared = true
+	}
+	if cleared {
+		if err := m.SaveChannels(ch); err != nil {
+			return err
+		}
+	}
+
+	// If active points to a removed version, clear it.
+	active := m.Active()
+	if active != "" && !m.IsInstalled(active) {
+		actPath := m.ActiveFile()
+		actTmp := actPath + ".tmp"
+		if err := atomicWriteFile(actTmp, func() ([]byte, error) {
+			return []byte("\n"), nil
+		}); err != nil {
+			return err
+		}
+		if err := os.Rename(actTmp, actPath); err != nil {
+			os.Remove(actTmp)
+			return err
+		}
+	}
+	return nil
 }
 
 // VersionID builds a version dir name from build tag and backend.
