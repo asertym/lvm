@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag to release (e.g. v0.2.4)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -55,6 +60,7 @@ jobs:
       - name: Upload asset
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag_name }}
           files: dist/llava-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,14 +76,22 @@ jobs:
       - name: Generate release notes
         id: notes
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          TAG="${{ inputs.tag_name }}"
+          [ -z "$TAG" ] && TAG="${GITHUB_REF#refs/tags/}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          PREV=$(git describe --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+          if [ -n "$PREV" ]; then
+            LOGS=$(git log --format="%s" "${PREV}..${TAG}")
+          else
+            LOGS="(first release)"
+          fi
 
           BODY=$(cat <<EOF
           **Changelog**
 
           \`\`\`
-          $(git log --format="%s" "${{ github.event.before }}..HEAD" 2>/dev/null || echo "(first release)")
+          ${LOGS}
           \`\`\`
 
           **Assets**
