@@ -7,7 +7,7 @@
 - **Language**: Go 1.23+ (module `llava`)
 - **CLI framework**: [Cobra](https://github.com/spf13/cobra)
 - **Interactive UI**: [Huh](https://github.com/charmbracelet/huh) (arrow-key selections)
-- **Current version**: 0.2.3 (declared as `var version = "0.2.3"` in `main.go`)
+- **Current version**: 0.2.4 (declared as `var version = "0.2.4"` in `main.go`)
 - **GitHub repo**: `asertym/lvm`
 
 ---
