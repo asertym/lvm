@@ -1,4 +1,4 @@
-# lvm cross-compilation build script
+# llava cross-compilation build script
 # Builds executables for all platforms into ./dist/
 
 .PHONY: all clean dist windows linux macos test
@@ -12,26 +12,26 @@ all: dist
 
 # Build for current platform
 build:
-	go build -o lvm .
+	go build -o llava .
 
 # Cross-compile for all platforms and copy to dist/
 dist: windows linux macos
 
 windows:
 	@echo "Building Windows/amd64..."
-	GOOS=windows GOARCH=amd64 go build -o $(DIST_DIR)/lvm-windows-amd64.exe .
-	GOOS=windows GOARCH=386 go build -o $(DIST_DIR)/lvm-windows-386.exe .
+	GOOS=windows GOARCH=amd64 go build -o $(DIST_DIR)/llava-windows-amd64.exe .
+	GOOS=windows GOARCH=386 go build -o $(DIST_DIR)/llava-windows-386.exe .
 
 linux:
 	@echo "Building Linux/amd64..."
-	GOOS=linux GOARCH=amd64 go build -o $(DIST_DIR)/lvm-linux-amd64 .
-	GOOS=linux GOARCH=arm64 go build -o $(DIST_DIR)/lvm-linux-arm64 .
-	GOOS=linux GOARCH=386 go build -o $(DIST_DIR)/lvm-linux-386 .
+	GOOS=linux GOARCH=amd64 go build -o $(DIST_DIR)/llava-linux-amd64 .
+	GOOS=linux GOARCH=arm64 go build -o $(DIST_DIR)/llava-linux-arm64 .
+	GOOS=linux GOARCH=386 go build -o $(DIST_DIR)/llava-linux-386 .
 
 macos:
 	@echo "Building macOS/amd64..."
-	GOOS=darwin GOARCH=amd64 go build -o $(DIST_DIR)/lvm-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -o $(DIST_DIR)/lvm-darwin-arm64 .
+	GOOS=darwin GOARCH=amd64 go build -o $(DIST_DIR)/llava-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -o $(DIST_DIR)/llava-darwin-arm64 .
 
 # Build for current platform only (default)
 $(DIST_DIR)/%:
@@ -39,7 +39,7 @@ $(DIST_DIR)/%:
 	go build -o $@ .
 
 clean:
-	rm -rf $(DIST_DIR) lvm
+	rm -rf $(DIST_DIR) llava
 
 test:
 	go test ./...
@@ -51,6 +51,6 @@ help:
 	@echo "  linux     - Build Linux executables"
 	@echo "  macos     - Build macOS executables"
 	@echo "  build     - Build current platform only"
-	@echo "  clean     - Remove dist/ and lvm binary"
+	@echo "  clean     - Remove dist/ and llava binary"
 	@echo "  test      - Run tests"
 	@echo "  help      - Show this help message"

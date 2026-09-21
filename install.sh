@@ -1,11 +1,11 @@
 #!/bin/sh
-# lvm installer — macOS and Linux
+# llava installer — macOS and Linux
 # Usage: curl -sSL https://github.com/asertym/lvm/releases/latest/download/install.sh | sh
 
 set -e
 
 REPO="asertym/lvm"
-BINARY="lvm"
+BINARY="llava"
 INSTALL_DIR="/usr/local/bin"
 
 # ── colors ────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ add_to_path() {
   if [ -f "$RC" ] && grep -q "$INSTALL_DIR" "$RC" 2>/dev/null; then
     green "✓ PATH already configured in $RC"
   else
-    printf "\n# lvm\n%s\n" "$LINE" >> "$RC"
+    printf "\n# llava\n%s\n" "$LINE" >> "$RC"
     green "✓ Added $INSTALL_DIR to PATH in $RC"
     yellow "  Reload with: source $RC"
   fi
@@ -148,7 +148,7 @@ add_to_path() {
 # ── main ──────────────────────────────────────────────────────────────────────
 main() {
   printf "\n"
-  bold "lvm — llama.cpp version manager"
+  bold "llava — llama.cpp version manager"
   printf "\n"
 
   detect_platform
@@ -159,8 +159,8 @@ main() {
 
   printf "\n"
   bold "Done. Run:"
-  printf "  lvm init\n"
-  printf "  lvm install latest\n\n"
+  printf "  llava init\n"
+  printf "  llava install latest\n\n"
 }
 
 main

@@ -157,7 +157,7 @@ func (r *Release) FindAsset(suffix string) (*Asset, error) {
 	}
 
 	return nil, fmt.Errorf(
-		"no asset matching %q found in release %s\n  available backends: %s\n  run 'lvm ls-remote' to see available assets",
+		"no asset matching %q found in release %s\n  available backends: %s\n  run 'llava ls-remote' to see available assets",
 		suffix, r.TagName, strings.Join(backendList, ", "),
 	)
 }

@@ -11,12 +11,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	gh "lvm/internal/github"
-	"lvm/internal/installer"
-	"lvm/internal/manager"
-	"lvm/internal/platform"
-	"lvm/internal/shim"
-	"lvm/internal/updater"
+	gh "llava/internal/github"
+	"llava/internal/installer"
+	"llava/internal/manager"
+	"llava/internal/platform"
+	"llava/internal/shim"
+	"llava/internal/updater"
 )
 
 func cmdInstall() *cobra.Command {
@@ -37,10 +37,10 @@ Version can be:
 Without a version argument, defaults to interactive arrow-key selection.
 
 Examples:
-  lvm install latest
-  lvm install b3412
-  lvm install latest --backend vulkan
-  lvm install   # interactive picker (default)`,
+  llava install latest
+  llava install b3412
+  llava install latest --backend vulkan
+  llava install   # interactive picker (default)`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Default to interactive mode when no version is provided.
@@ -66,11 +66,11 @@ Examples:
 
 // installVersion is the non-interactive install flow (kept for reuse and backward compat).
 func installVersion(versionArg, backendFlag string, useAfter bool) error {
-	// Check for lvm update before starting install (unless skipped).
+	// Check for llava update before starting install (unless skipped).
 	if !skipUpdate {
 		latest, err := updater.LatestReleaseWithAssets()
 		if err == nil && updater.SemverLess(version, latest.TagName) {
-			fmt.Printf("(lvm %s → %s available)\n", version, latest.TagName)
+			fmt.Printf("(llava %s → %s available)\n", version, latest.TagName)
 		}
 	}
 
@@ -193,7 +193,7 @@ func installVersion(versionArg, backendFlag string, useAfter bool) error {
 		return switchTo(versionID, ch)
 	}
 
-	fmt.Printf("  Run %s to switch to it\n", color.New(color.Bold).Sprintf("lvm use %s", versionID))
+	fmt.Printf("  Run %s to switch to it\n", color.New(color.Bold).Sprintf("llava use %s", versionID))
 	return nil
 }
 
@@ -312,11 +312,11 @@ func installInteractive(backendFlag string, useAfter bool) error {
 // installSingleRelease installs a single release using the given backend.
 // If backend is empty, auto-detects. If specified, uses that backend override.
 func installSingleRelease(release *gh.Release, backend string, useAfter bool) error {
-	// Check for lvm update before starting install (unless skipped).
+	// Check for llava update before starting install (unless skipped).
 	if !skipUpdate {
 		latest, err := updater.LatestReleaseWithAssets()
 		if err == nil && updater.SemverLess(version, latest.TagName) {
-			fmt.Printf("(lvm %s → %s available)\n", version, latest.TagName)
+			fmt.Printf("(llava %s → %s available)\n", version, latest.TagName)
 		}
 	}
 
@@ -416,7 +416,7 @@ func installSingleRelease(release *gh.Release, backend string, useAfter bool) er
 		return switchTo(versionID, ch)
 	}
 
-	fmt.Printf("  Run %s to switch to it\n", color.New(color.Bold).Sprintf("lvm use %s", versionID))
+	fmt.Printf("  Run %s to switch to it\n", color.New(color.Bold).Sprintf("llava use %s", versionID))
 	return nil
 }
 
@@ -440,7 +440,7 @@ func makeProgressPrinter() func(int64, int64) {
 // fetchSHASUM downloads a SHASUM file and extracts the checksum for a given asset.
 func fetchSHASUM(url, assetName string) (string, error) {
 	// Simple: download the file, look for the asset name in each line.
-	tmpPath := os.TempDir() + "/lvm-shasums"
+	tmpPath := os.TempDir() + "/llava-shasums"
 	if err := gh.DownloadFile(url, tmpPath, nil); err != nil {
 		return "", err
 	}

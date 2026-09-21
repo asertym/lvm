@@ -37,14 +37,14 @@ var KnownBinaries = []string{
 // Manager handles shim creation and updates.
 type Manager struct {
 	shimsDir string
-	lvmHome  string
+	llavaHome  string
 }
 
 // NewManager creates a shim manager.
-func NewManager(shimsDir, lvmHome string) *Manager {
+func NewManager(shimsDir, llavaHome string) *Manager {
 	return &Manager{
 		shimsDir: shimsDir,
-		lvmHome:  lvmHome,
+		llavaHome:  llavaHome,
 	}
 }
 
@@ -55,13 +55,13 @@ func (m *Manager) EnsureAll() error {
 		return fmt.Errorf("cannot create shims dir: %w", err)
 	}
 	// Validate active version still exists.
-	activeData, err := os.ReadFile(filepath.Join(m.lvmHome, "active"))
+	activeData, err := os.ReadFile(filepath.Join(m.llavaHome, "active"))
 	if err == nil {
 		activeID := strings.TrimSpace(string(activeData))
 		if activeID != "" {
-			activeDir := filepath.Join(m.lvmHome, "versions", activeID)
+			activeDir := filepath.Join(m.llavaHome, "versions", activeID)
 			if _, statErr := os.Stat(activeDir); os.IsNotExist(statErr) {
-				return fmt.Errorf("active version %q directory missing — run 'lvm use <version>' to select a valid version", activeID)
+				return fmt.Errorf("active version %q directory missing — run 'llava use <version>' to select a valid version", activeID)
 			}
 		}
 	}
@@ -106,25 +106,25 @@ func (m *Manager) ShimPath(binaryName string) string {
 // createUnixShim writes a POSIX shell shim script.
 func (m *Manager) createUnixShim(shimPath, binaryName string) error {
 	const tmpl = `#!/bin/sh
-# lvm shim — {{.BinaryName}}
-LVM_HOME="{{.LvmHome}}"
-ACTIVE_FILE="$LVM_HOME/active"
+# llava shim — {{.BinaryName}}
+LLAVA_HOME="{{.LlavaHome}}"
+ACTIVE_FILE="$LLAVA_HOME/active"
 
 if [ ! -f "$ACTIVE_FILE" ]; then
-	echo "lvm: no active version set. Run: lvm use <version>" >&2
+	echo "llava: no active version set. Run: llava use <version>" >&2
 	exit 1
 fi
 
 VERSION=$(cat "$ACTIVE_FILE")
-BINARY="$LVM_HOME/versions/$VERSION/{{.BinaryName}}"
+BINARY="$LLAVA_HOME/versions/$VERSION/{{.BinaryName}}"
 
 # Fallback to legacy main binary if modern name doesn't exist
 if [ ! -f "$BINARY" ]; then
-	BINARY="$LVM_HOME/versions/$VERSION/main"
+	BINARY="$LLAVA_HOME/versions/$VERSION/main"
 fi
 
 if [ ! -f "$BINARY" ]; then
-	echo "lvm: binary '{{.BinaryName}}' not found in version $VERSION" >&2
+	echo "llava: binary '{{.BinaryName}}' not found in version $VERSION" >&2
 	exit 1
 fi
 
@@ -132,8 +132,8 @@ exec "$BINARY" "$@"
 `
 	data := struct {
 		BinaryName string
-		LvmHome    string
-	}{binaryName, m.lvmHome}
+		LlavaHome    string
+	}{binaryName, m.llavaHome}
 
 	t, err := template.New("unix_shim").Parse(tmpl)
 	if err != nil {
@@ -153,17 +153,17 @@ exec "$BINARY" "$@"
 func (m *Manager) createWindowsShim(shimPath, binaryName string) error {
 	const cmdTmpl = `@echo off
 setlocal enabledelayedexpansion
-rem lvm shim — {{.BinaryName}}
-set "LVM_HOME={{.LvmHome}}"
-set "ACTIVE_FILE=%LVM_HOME%\active"
+rem llava shim — {{.BinaryName}}
+set "LLAVA_HOME={{.LlavaHome}}"
+set "ACTIVE_FILE=%LLAVA_HOME%\active"
 
 if not exist "%ACTIVE_FILE%" (
-	echo lvm: no active version set. Run: lvm use ^<version^> 1>&2
+	echo llava: no active version set. Run: llava use ^<version^> 1>&2
 	exit /b 1
 )
 
 set /p VERSION=<"%ACTIVE_FILE%"
-set "VERSION_DIR=%LVM_HOME%\versions\!VERSION!"
+set "VERSION_DIR=%LLAVA_HOME%\versions\!VERSION!"
 set "BINARY=!VERSION_DIR!\{{.BinaryName}}.exe"
 
 rem Fallback to legacy main.exe if modern name doesn't exist
@@ -172,7 +172,7 @@ if not exist "!BINARY!" (
 )
 
 if not exist "!BINARY!" (
-	echo lvm: binary '{{.BinaryName}}' not found in version !VERSION! 1>&2
+	echo llava: binary '{{.BinaryName}}' not found in version !VERSION! 1>&2
 	exit /b 1
 )
 
@@ -180,8 +180,8 @@ if not exist "!BINARY!" (
 `
 	data := struct {
 		BinaryName string
-		LvmHome    string
-	}{binaryName, m.lvmHome}
+		LlavaHome    string
+	}{binaryName, m.llavaHome}
 
 	t, err := template.New("win_shim").Parse(cmdTmpl)
 	if err != nil {

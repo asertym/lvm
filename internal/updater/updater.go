@@ -13,7 +13,7 @@ const (
 	repo    = "asertym/lvm"
 )
 
-// ReleaseAsset holds metadata for a lvm binary release asset.
+// ReleaseAsset holds metadata for a llava binary release asset.
 type ReleaseAsset struct {
 	Name string `json:"name"`
 	URL  string `json:"browser_download_url"`
@@ -56,7 +56,7 @@ func LatestReleaseWithAssets() (*ReleaseWithAssets, error) {
 }
 
 // AssetForPlatform returns the asset matching the current platform (os/arch).
-// Naming convention: lvm_<version>_<os>_<arch> (e.g. lvm_0.1.3_linux_x64)
+// Naming convention: llava_<version>_<os>_<arch> (e.g. llava_0.1.3_linux_x64)
 // Windows assets have a .exe suffix.
 func AssetForPlatform(r *ReleaseWithAssets) (*ReleaseAsset, error) {
 	osStr := runtime.GOOS

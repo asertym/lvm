@@ -1,9 +1,9 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 $Repo    = "asertym/lvm"
-$Binary  = "lvm"
+$Binary  = "llava"
 $Arch    = if ([Environment]::Is64BitOperatingSystem -and ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq "ARM64")) { "arm64" } else { "amd64" }
-$Asset   = "lvm-windows-$Arch.exe"
+$Asset   = "llava-windows-$Arch.exe"
 $InstallDir = Join-Path $env:USERPROFILE "bin"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ function Get-LatestVersion
     $url = "https://api.github.com/repos/$Repo/releases/latest"
     try
     {
-        $release = Invoke-RestMethod -Uri $url -Headers @{ 'User-Agent' = 'lvm-installer' }
+        $release = Invoke-RestMethod -Uri $url -Headers @{ 'User-Agent' = 'llava-installer' }
         return $release.tag_name
     } catch
     {
@@ -33,7 +33,7 @@ function Get-Binary
     param($Version)
 
     $url  = "https://github.com/$Repo/releases/download/$Version/$Asset"
-    $tmp  = Join-Path $env:TEMP "lvm-install.exe"
+    $tmp  = Join-Path $env:TEMP "llava-install.exe"
 
     Write-Host "Downloading $Binary $Version (windows/amd64)..."
 
@@ -123,7 +123,7 @@ public static extern IntPtr SendMessageTimeout(
 function Main
 {
     Write-Host ""
-    Write-Bold "lvm — llama.cpp version manager"
+    Write-Bold "llava — llama.cpp version manager"
     Write-Host ""
 
     $version = Get-LatestVersion
@@ -133,8 +133,8 @@ function Main
 
     Write-Host ""
     Write-Bold "Done. Open a new terminal, then run:"
-    Write-Host "  lvm init"
-    Write-Host "  lvm install latest"
+    Write-Host "  llava init"
+    Write-Host "  llava install latest"
     Write-Host ""
 }
 

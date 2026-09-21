@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	gh "lvm/internal/github"
+	gh "llava/internal/github"
 )
 
 // Install downloads and extracts a release asset into destDir.
@@ -24,7 +24,7 @@ func Install(asset *Asset, destDir string, progress func(downloaded, total int64
 	}
 
 	// Download to a unique temp file to avoid collisions with concurrent installs.
-	tmpFile, err := os.CreateTemp(os.TempDir(), "lvm-*")
+	tmpFile, err := os.CreateTemp(os.TempDir(), "llava-*")
 	if err != nil {
 		return fmt.Errorf("cannot create temp file: %w", err)
 	}

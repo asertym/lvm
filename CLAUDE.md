@@ -1,10 +1,10 @@
-# lvm — llama.cpp Version Manager
+# llava — llama.cpp Version Manager
 
 ## Project Overview
 
-**lvm** is a Go-based CLI version manager for [llama.cpp](https://github.com/ggerganov/llama.cpp) builds. It lets users install, switch between, and update multiple llama.cpp versions across stable and beta channels. It works on **Linux**, **macOS**, and **Windows**.
+**llava** is a Go-based CLI version manager for [llama.cpp](https://github.com/ggerganov/llama.cpp) builds. It lets users install, switch between, and update multiple llama.cpp versions across stable and beta channels. It works on **Linux**, **macOS**, and **Windows**.
 
-- **Language**: Go 1.23+ (module `lvm`)
+- **Language**: Go 1.23+ (module `llava`)
 - **CLI framework**: [Cobra](https://github.com/spf13/cobra)
 - **Interactive UI**: [Huh](https://github.com/charmbracelet/huh) (arrow-key selections)
 - **Current version**: 0.2.3 (declared as `var version = "0.2.3"` in `main.go`)
@@ -31,8 +31,8 @@ make build-macos   # macOS
 ### First-run workflow
 
 ```bash
-lvm init       # Sets up shims, adds shims dir to PATH (auto-detected shell profiles)
-lvm install latest   # Downloads and installs latest stable llama.cpp build
+llava init       # Sets up shims, adds shims dir to PATH (auto-detected shell profiles)
+llava install latest   # Downloads and installs latest stable llama.cpp build
 ```
 
 ---
@@ -41,7 +41,7 @@ lvm install latest   # Downloads and installs latest stable llama.cpp build
 
 ```
 lvm/
-├── main.go                     # Entry point: lvmHome(), root command, cmdVersion(), cmdInit()
+├── main.go                     # Entry point: llavaHome(), root command, cmdVersion(), cmdInit()
 ├── cmd_install.go              # cmdInstall(), installVersion(), installInteractive(), installSingleRelease()
 ├── cmd_others.go               # cmdUse(), cmdCurrent(), cmdList(), cmdListRemote(), cmdUpdate(),
 │                                #   cmdChannel(), cmdUninstall(), uninstallInteractive(), uninstallVersion(),
@@ -63,10 +63,10 @@ lvm/
 └── CLAUDE.md                   # ← You are here
 ```
 
-### Data Layout (`~/.lvm` or `$LVM_HOME`)
+### Data Layout (`~/.llava` or `$LLAVA_HOME`)
 
 ```
-~/.lvm/
+~/.llava/
 ├── active              # File containing the active version ID string
 ├── channels.json       # Stable/beta channel → version ID mapping
 ├── cache/              # Cached GitHub releases JSON (6-hour TTL)
@@ -89,21 +89,21 @@ lvm/
 
 | Command                      | File             | Description                                                                                                                               |
 | ---------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `lvm init`                   | `main.go`        | One-time setup: creates shims, auto-adds shims dir to shell PATH                                                                          |
-| `lvm install [version]`      | `cmd_install.go` | Install a build. Args: `latest`, `latest-beta`, `b3412`, or empty for interactive picker. Flags: `--backend`, `--use`, `--interactive/-i` |
-| `lvm use [version-id]`       | `cmd_others.go`  | Switch active version. Interactive picker if no arg. Flag: `--interactive/-i`                                                             |
-| `lvm current`                | `cmd_others.go`  | Print active version ID, channel, install date                                                                                            |
-| `lvm ls` / `lvm list`        | `cmd_others.go`  | List installed versions with `▶` marker for active, channel tags                                                                          |
-| `lvm ls-remote`              | `cmd_others.go`  | List available GitHub releases. Flags: `--beta`, `--limit`                                                                                |
-| `lvm update`                 | `cmd_others.go`  | Check active version for newer release on same channel. Prompt to install. Flag: `--dry-run`                                              |
-| `lvm channel [stable\|beta]` | `cmd_others.go`  | Show current channel config or switch to stable/beta                                                                                      |
-| `lvm uninstall [version-id]` | `cmd_others.go`  | Remove a version. Interactive picker if no arg. Aliases: `remove`, `rm`                                                                   |
-| `lvm fetch`                  | `cmd_others.go`  | Force-refresh the GitHub releases cache                                                                                                   |
-| `lvm version`                | `main.go`        | Print lvm version, prompt for self-update if newer available. Flag: `--skip-update-check`                                                 |
+| `llava init`                   | `main.go`        | One-time setup: creates shims, auto-adds shims dir to shell PATH                                                                          |
+| `llava install [version]`      | `cmd_install.go` | Install a build. Args: `latest`, `latest-beta`, `b3412`, or empty for interactive picker. Flags: `--backend`, `--use`, `--interactive/-i` |
+| `llava use [version-id]`       | `cmd_others.go`  | Switch active version. Interactive picker if no arg. Flag: `--interactive/-i`                                                             |
+| `llava current`                | `cmd_others.go`  | Print active version ID, channel, install date                                                                                            |
+| `llava ls` / `llava list`        | `cmd_others.go`  | List installed versions with `▶` marker for active, channel tags                                                                          |
+| `llava ls-remote`              | `cmd_others.go`  | List available GitHub releases. Flags: `--beta`, `--limit`                                                                                |
+| `llava update`                 | `cmd_others.go`  | Check active version for newer release on same channel. Prompt to install. Flag: `--dry-run`                                              |
+| `llava channel [stable\|beta]` | `cmd_others.go`  | Show current channel config or switch to stable/beta                                                                                      |
+| `llava uninstall [version-id]` | `cmd_others.go`  | Remove a version. Interactive picker if no arg. Aliases: `remove`, `rm`                                                                   |
+| `llava fetch`                  | `cmd_others.go`  | Force-refresh the GitHub releases cache                                                                                                   |
+| `llava version`                | `main.go`        | Print llava version, prompt for self-update if newer available. Flag: `--skip-update-check`                                                 |
 
 **Global flags** (on root command):
 
-- `--skip-update-check` — skip the self-update check on `lvm version`
+- `--skip-update-check` — skip the self-update check on `llava version`
 
 ---
 
@@ -113,7 +113,7 @@ lvm/
 
 **File**: `manager.go`
 
-- **`Manager`** struct — wraps `~/.lvm` path; methods for reading/writing state
+- **`Manager`** struct — wraps `~/.llava` path; methods for reading/writing state
 - **`Version`** struct — `{ ID, Build, Backend, Channel, InstalledAt }`
 - **`Manifest`** struct — `{ Build, Backend, Channel, Aliases, InstalledAt }` (stored as JSON per version)
 - **`Channels`** struct — `{ Stable, Beta }` string pointers (maps channel names → version IDs)
@@ -129,11 +129,11 @@ lvm/
 
 **File**: `shim.go`
 
-- **`shim.Manager`** — `{ shimsDir, lvmHome }`
+- **`shim.Manager`** — `{ shimsDir, llavaHome }`
 - **`KnownBinaries`** — canonical list of 10 llama.cpp command names
 - **`EnsureAll()`** — Creates shims for all known binaries; validates active version still exists
 - **`Create(binaryName)`** — Generates a shim script:
-  - **Unix**: `#!/bin/sh` script that reads `$LVM_HOME/active`, resolves binary path, exec's it
+  - **Unix**: `#!/bin/sh` script that reads `$LLAVA_HOME/active`, resolves binary path, exec's it
   - **Windows**: `.cmd` batch file with similar logic (`set /p VERSION < active`)
 - **`List()`** — Returns installed shim names
 
@@ -172,12 +172,12 @@ lvm/
 - **`AssetSuffix()`** — Generates asset name fragment: `ubuntu-amd64`, `macos-arm64`, `win-cuda-cu12.2.0-x64`, etc.
 - **`BinaryExt()`** — `""` on Unix, `".exe"` on Windows
 
-### `internal/updater` — lvm self-update metadata
+### `internal/updater` — llava self-update metadata
 
 **File**: `updater.go`
 
 - **`LatestRelease()`** / **`LatestReleaseWithAssets()`** — Fetches from `api.github.com/repos/asertym/lvm/releases/latest`
-- **`AssetForPlatform(release)`** — Finds asset matching `lvm_<version>_<os>_<arch>` naming (`.exe` on Windows)
+- **`AssetForPlatform(release)`** — Finds asset matching `llava_<version>_<os>_<arch>` naming (`.exe` on Windows)
 - **`SemverLess(a, b)`** — Compares semver strings (handles `v` prefix, missing patch)
 - **`NewerAvailable(current)`** — Returns `(bool, latestTag, error)`
 
@@ -186,8 +186,8 @@ lvm/
 **File**: `selfupdate.go`
 
 - **`Update(downloadedURL, binPath)`** — Downloads latest binary and replaces running executable
-  - **Unix**: Download to `.lvm-update-tmp` → `chmod 0755` → `os.Rename` (atomic)
-  - **Windows**: Download `.lvm-new.exe` → write `.lvm-update-helper.bat` → start batch (moves file, restarts lvm, deletes temp)
+  - **Unix**: Download to `.llava-update-tmp` → `chmod 0755` → `os.Rename` (atomic)
+  - **Windows**: Download `.llava-new.exe` → write `.llava-update-helper.bat` → start batch (moves file, restarts llava, deletes temp)
 
 ---
 
@@ -209,7 +209,7 @@ Built via `manager.VersionID(release.TagName, backendString)` where `release.Tag
 
 | Variable   | Default  | Description                                                     |
 | ---------- | -------- | --------------------------------------------------------------- |
-| `LVM_HOME` | `~/.lvm` | Base directory for lvm state (versions, shims, cache, manifest) |
+| `LLAVA_HOME` | `~/.llava` | Base directory for llava state (versions, shims, cache, manifest) |
 
 ---
 
@@ -217,14 +217,14 @@ Built via `manager.VersionID(release.TagName, backendString)` where `release.Tag
 
 ### GitHub (asertym/lvm)
 
-- **lvm releases**: Self-updates from `https://github.com/asertym/lvm/releases/latest`
+- **llava releases**: Self-updates from `https://github.com/asertym/lvm/releases/latest`
 - **llama.cpp releases**: All installs pull from `https://github.com/ggerganov/llama.cpp/releases` via `internal/github` client
 
 ### Shims
 
-- Unix: Shell scripts in `~/.lvm/shims/` — read `$LVM_HOME/active` to find binary
-- Windows: `.cmd` batch files in `~/.lvm/shims/` — read `%LVM_HOME%\active`
-- `lvm init` auto-appends shims dir to shell profile (`.bashrc`, `.zshrc`, `.bash_profile`, `.profile` on Unix; PowerShell `$env:PATH` via `HKCU:\Environment` on Windows)
+- Unix: Shell scripts in `~/.llava/shims/` — read `$LLAVA_HOME/active` to find binary
+- Windows: `.cmd` batch files in `~/.llava/shims/` — read `%LLAVA_HOME%\active`
+- `llava init` auto-appends shims dir to shell profile (`.bashrc`, `.zshrc`, `.bash_profile`, `.profile` on Unix; PowerShell `$env:PATH` via `HKCU:\Environment` on Windows)
 
 ---
 
@@ -273,7 +273,7 @@ No test files were found in the repository. Tests would be Go-style unit tests i
 ## Design Notes
 
 - **Stateless shims**: Shims are generated at install/init time and read the `active` file at runtime. Switching versions is a single file write — no shim regeneration needed.
-- **Atomic switches**: `lvm use` writes `active` and `channels.json` together via `mgr.SwitchActiveAndChannel()`.
+- **Atomic switches**: `llava use` writes `active` and `channels.json` together via `mgr.SwitchActiveAndChannel()`.
 - **Binary compatibility**: The `ResolveAliases` system handles llama.cpp's 2024 binary rename (b2900+) gracefully by probing the filesystem.
 - **Install safety**: Assets are validated (HTTP HEAD check before download) and SHA256 verified after download. Partial installs are cleaned up on failure.
 - **Cache strategy**: GitHub releases are cached locally as JSON with a 6-hour TTL to reduce API rate-limit risk.

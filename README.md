@@ -1,27 +1,27 @@
-# lvm — llama.cpp Version Manager
+# llava — llama.cpp Version Manager
 
 A cross-platform CLI tool for managing multiple [llama.cpp](https://github.com/ggml-org/llama.cpp) versions on your machine.
 
 ```bash
 # Install latest stable version
-lvm install latest
+llava install latest
 
 # Switch to a specific version
-lvm use b3412-cuda
+llava use b3412-cuda
 
 # Interactive version picker
-lvm use          # arrow-key selection
-lvm install      # arrow-key selection
+llava use          # arrow-key selection
+llava install      # arrow-key selection
 
 # List all installed versions
-lvm ls
+llava ls
 ```
 
 ---
 
-## What is lvm?
+## What is llava?
 
-`lvm` is a lightweight version manager that simplifies working with multiple builds of llama.cpp. It handles:
+`llava` is a lightweight version manager that simplifies working with multiple builds of llama.cpp. It handles:
 
 - **Installation** of llama.cpp releases from GitHub
 - **Version switching** between different builds (CPU, CUDA, Metal, Vulkan, etc.)
@@ -45,7 +45,7 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 | **Auto-shims**         | All llama.cpp binaries become accessible via simple commands       |
 | **Cross-platform**     | Works on Windows, Linux, and macOS                                 |
 | **Cache**              | GitHub releases are cached for 6 hours to avoid repeated API calls |
-| **Refresh**            | Run `lvm fetch` to manually refresh cached data before TTL expires |
+| **Refresh**            | Run `llava fetch` to manually refresh cached data before TTL expires |
 | **Clean uninstall**    | Remove versions without leaving artifacts                          |
 
 ---
@@ -59,20 +59,20 @@ Think of it like `nvm` (Node Version Manager) but for llama.cpp.
 curl -sSL https://github.com/asertym/lvm/releases/latest/download/install.sh | sh
 
 # Windows (PowerShell)
-# Download from https://github.com/YOURNAME/lvm/releases and run install.ps1
+# Download from https://github.com/YOURNAME/llava/releases and run install.ps1
 ```
 
 ### Manual Installation
 
 ```bash
 # Download the binary for your platform
-wget https://github.com/asertym/lvm/releases/latest/download/lvm-linux-amd64
+wget https://github.com/asertym/lvm/releases/latest/download/llava-linux-amd64
 
 # Move to a location in your PATH
-sudo mv lvm-linux-amd64 /usr/local/bin/lvm
+sudo mv llava-linux-amd64 /usr/local/bin/llava
 
 # Initialize
-lvm init
+llava init
 ```
 
 ### Building from Source
@@ -80,9 +80,9 @@ lvm init
 ```bash
 git clone https://github.com/asertym/lvm.git
 cd lvm
-go build -o lvm .
-sudo mv lvm /usr/local/bin/lvm
-lvm init
+go build -o llava .
+sudo mv llava /usr/local/bin/llava
+llava init
 ```
 
 ---
@@ -91,10 +91,10 @@ lvm init
 
 ```bash
 # 1. Initialize (run once)
-lvm init
+llava init
 
 # 2. Install a version (interactive picker by default)
-lvm install
+llava install
 
 # 3. Start using llama.cpp commands
 llama-cli --help
@@ -109,23 +109,23 @@ llama-quantize model.gguf q4_0.gguf
 
 ```bash
 # Latest stable release
-lvm install latest
+llava install latest
 
 # Latest beta/pre-release
-lvm install latest-beta
+llava install latest-beta
 
 # Specific build number
-lvm install b3412
+llava install b3412
 
 # With explicit GPU backend
-lvm install latest --backend cuda
-lvm install b3412 --backend vulkan
-lvm install latest --backend metal
+llava install latest --backend cuda
+llava install b3412 --backend vulkan
+llava install latest --backend metal
 
 # Interactive picker (default when no version given)
-lvm install        # picks from releases list
-lvm install -i     # same, explicit flag
-lvm install latest # non-interactive
+llava install        # picks from releases list
+llava install -i     # same, explicit flag
+llava install latest # non-interactive
 ```
 
 **Available backends:**
@@ -142,69 +142,69 @@ lvm install latest # non-interactive
 
 ```bash
 # Switch to a specific installed version
-lvm use b3412-cuda
+llava use b3412-cuda
 
 # Interactive picker (default when no version given)
-lvm use            # picks from installed list
-lvm use -i         # same, explicit flag
-lvm use b3412-cuda # non-interactive
+llava use            # picks from installed list
+llava use -i         # same, explicit flag
+llava use b3412-cuda # non-interactive
 
 # Switch to the stable channel (uses last stable version)
-lvm channel stable
+llava channel stable
 
 # Switch to the beta channel (uses last beta version)
-lvm channel beta
+llava channel beta
 ```
 
 ### List Versions
 
 ```bash
 # List all locally installed versions
-lvm ls
+llava ls
 
 # List available releases on GitHub
-lvm ls-remote
+llava ls-remote
 
 # Show current active version
-lvm current
+llava current
 ```
 
 ### Fetch / Refresh Cache
 
 ```bash
 # Manually refresh cached GitHub release data
-lvm fetch
+llava fetch
 ```
 
-By default, releases are cached for 6 hours. Use `lvm fetch` to force a refresh before the cache expires.
+By default, releases are cached for 6 hours. Use `llava fetch` to force a refresh before the cache expires.
 
 ### Update
 
 ```bash
 # Check for updates to the active version
-lvm update
+llava update
 ```
 
 ### Uninstall
 
 ```bash
 # Remove a specific version
-lvm uninstall b3412-cuda
+llava uninstall b3412-cuda
 
 # Interactive picker (default when no version given)
-lvm uninstall      # picks from installed list
-lvm uninstall -i   # same, explicit flag
-lvm uninstall b3412-cuda # non-interactive
+llava uninstall      # picks from installed list
+llava uninstall -i   # same, explicit flag
+llava uninstall b3412-cuda # non-interactive
 ```
 
 ### Version Information
 
 ```bash
-# Show lvm version
-lvm version
+# Show llava version
+llava version
 
 # Show currently active version details
-lvm current
+llava current
 ```
 
 ---
@@ -217,15 +217,15 @@ lvm current
 # Clone the repo and build
 git clone https://github.com/asertym/lvm.git
 cd lvm
-go build -o lvm .
-sudo mv lvm /usr/local/bin/lvm
+go build -o llava .
+sudo mv llava /usr/local/bin/llava
 
 # Initialize and install
-lvm init
-lvm install latest
+llava init
+llava install latest
 
 # Verify
-lvm current
+llava current
 llama-cli --version
 ```
 
@@ -233,60 +233,60 @@ llama-cli --version
 
 ```bash
 # Try CUDA (if available)
-lvm install latest --backend cuda
-lvm use latest-cuda
+llava install latest --backend cuda
+llava use latest-cuda
 
 # Fall back to Vulkan if CUDA fails
-lvm uninstall latest-cuda
-lvm install latest --backend vulkan
-lvm use latest-vulkan
+llava uninstall latest-cuda
+llava install latest --backend vulkan
+llava use latest-vulkan
 
 # CPU fallback
-lvm uninstall latest-vulkan
-lvm install latest --backend cpu
-lvm use latest-cpu
+llava uninstall latest-vulkan
+llava install latest --backend cpu
+llava use latest-cpu
 ```
 
 ### Example 3: Using Stable and Beta Channels
 
 ```bash
 # Install and use stable (default)
-lvm install latest
-lvm use latest-cpu
+llava install latest
+llava use latest-cpu
 
 # Later, try beta features
-lvm install latest-beta
-lvm channel beta
+llava install latest-beta
+llava channel beta
 
 # Back to stable when ready
-lvm channel stable
+llava channel stable
 ```
 
 ### Example 4: Managing Multiple Projects
 
 ```bash
 # Project A uses older stable version
-lvm use b3200-cuda
+llava use b3200-cuda
 
 # Project B needs latest features
-lvm use b3412-cuda
+llava use b3412-cuda
 
 # Project C needs specific build
-lvm install b3150
-lvm use b3150-cpu
+llava install b3150
+llava use b3150-cpu
 ```
 
 ### Example 5: Interactive Mode
 
 ```bash
 # Pick an installed version with arrow keys
-lvm use
+llava use
 
 # Browse all releases and install one
-lvm install
+llava install
 
 # Remove a version (active version is protected from removal)
-lvm uninstall
+llava uninstall
 ```
 
 ---
@@ -294,7 +294,7 @@ lvm uninstall
 ## Directory Structure
 
 ```
-~/.lvm/
+~/.llava/
 ├── active              # Currently active version ID (e.g., "b3412-cuda")
 ├── channels.json       # Channel state (stable/beta → version IDs)
 ├── cache/              # Cached GitHub release data (6-hour TTL)
@@ -333,18 +333,18 @@ b3150-metal  # Build 3150 with Metal backend
 
 ### Shims
 
-`lvm` creates shell script wrappers (shims) for each llama.cpp binary:
+`llava` creates shell script wrappers (shims) for each llama.cpp binary:
 
 ```bash
 # On Unix-like systems
-llama-cli → ~/.lvm/shims/llama-cli
-          → checks ~/.lvm/active
-          → executes ~/.lvm/versions/<active>/llama-cli
+llama-cli → ~/.llava/shims/llama-cli
+          → checks ~/.llava/active
+          → executes ~/.llava/versions/<active>/llama-cli
 
 # On Windows
-llama-cli.cmd → %LVM_HOME%\shims\llama-cli.cmd
-              → checks %LVM_HOME%\active
-              → executes %LVM_HOME%\versions\<active>\llama-cli.exe
+llama-cli.cmd → %LLAVA_HOME%\shims\llama-cli.cmd
+              → checks %LLAVA_HOME%\active
+              → executes %LLAVA_HOME%\versions\<active>\llama-cli.exe
 ```
 
 ### Interactive Picker
@@ -378,18 +378,18 @@ Two channels track the "default" version for each track:
 
 | Variable   | Description                        |
 | ---------- | ---------------------------------- |
-| `LVM_HOME` | Override default `~/.lvm` location |
+| `LLAVA_HOME` | Override default `~/.llava` location |
 
 ### Custom Install Location
 
 ```bash
-export LVM_HOME=/opt/lvm
-lvm init
+export LLAVA_HOME=/opt/llava
+llava init
 ```
 
 ### Windows PATH
 
-On Windows, `lvm init` automatically adds the shims directory to your user PATH via the Registry, ensuring it survives terminal restarts.
+On Windows, `llava init` automatically adds the shims directory to your user PATH via the Registry, ensuring it survives terminal restarts.
 
 ---
 
@@ -399,23 +399,23 @@ On Windows, `lvm init` automatically adds the shims directory to your user PATH 
 
 ```bash
 # Solution: Install a version first
-lvm install latest
-lvm use latest-cpu
+llava install latest
+llava use latest-cpu
 ```
 
 ### "binary not found"
 
 ```bash
 # Check active version
-lvm current
+llava current
 
 # Re-initialize shims
-rm ~/.lvm/shims/*
-lvm init
+rm ~/.llava/shims/*
+llava init
 
 # Or reinstall the version
-lvm uninstall <version-id>
-lvm install <version-id>
+llava uninstall <version-id>
+llava install <version-id>
 ```
 
 ### PATH not working
@@ -432,7 +432,7 @@ Get-ItemProperty -Path 'HKCU:\Environment' -Name PATH | Format-List
 
 ```bash
 # Force a specific backend
-lvm install latest --backend cpu   # fall back to CPU
+llava install latest --backend cpu   # fall back to CPU
 
 # Check available backends for your platform
 nvidia-smi       # CUDA

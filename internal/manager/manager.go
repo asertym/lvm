@@ -44,15 +44,15 @@ type Channels struct {
 
 // Manager handles all local version state.
 type Manager struct {
-	home string // ~/.lvm
+	home string // ~/.llava
 }
 
-// New creates a Manager for the given lvm home directory.
+// New creates a Manager for the given llava home directory.
 func New(home string) *Manager {
 	return &Manager{home: home}
 }
 
-// Home returns the lvm home directory.
+// Home returns the llava home directory.
 func (m *Manager) Home() string {
 	return m.home
 }
@@ -82,7 +82,7 @@ func (m *Manager) ActiveFile() string {
 	return filepath.Join(m.home, "active")
 }
 
-// Init creates the lvm directory structure.
+// Init creates the llava directory structure.
 func (m *Manager) Init() error {
 	dirs := []string{
 		m.home,
@@ -366,7 +366,7 @@ func (m *Manager) Remove(id string) error {
 
 	active := m.Active()
 	if active == id {
-		return fmt.Errorf("cannot remove active version %q — run 'lvm use <other>' first", id)
+		return fmt.Errorf("cannot remove active version %q — run 'llava use <other>' first", id)
 	}
 
 	return os.RemoveAll(dir)

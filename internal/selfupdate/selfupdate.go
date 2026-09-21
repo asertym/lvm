@@ -10,7 +10,7 @@ import (
 	"runtime"
 )
 
-// Update downloads the latest lvm binary and replaces the running executable.
+// Update downloads the latest llava binary and replaces the running executable.
 // Returns nil on success. On Windows it schedules the replacement for next start.
 func Update(downloadedURL string, binPath string) error {
 	if binPath == "" {
@@ -33,7 +33,7 @@ func Update(downloadedURL string, binPath string) error {
 }
 
 func updateUnix(url, dir, binPath string) error {
-	tmpFile := filepath.Join(dir, ".lvm-update-tmp")
+	tmpFile := filepath.Join(dir, ".llava-update-tmp")
 	if err := download(url, tmpFile); err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func updateUnix(url, dir, binPath string) error {
 }
 
 func updateWindows(url, dir, base string) error {
-	newName := ".lvm-new.exe"
+	newName := ".llava-new.exe"
 	tmpFile := filepath.Join(dir, newName)
 	if err := download(url, tmpFile); err != nil {
 		return err
@@ -58,8 +58,8 @@ func updateWindows(url, dir, base string) error {
 
 	binDir := filepath.Dir(tmpFile)
 
-	// Build a batch script that replaces the binary and restarts lvm.
-	scriptName := ".lvm-update-helper.bat"
+	// Build a batch script that replaces the binary and restarts llava.
+	scriptName := ".llava-update-helper.bat"
 	scriptPath := filepath.Join(dir, scriptName)
 
 	script := fmt.Sprintf(`@echo off

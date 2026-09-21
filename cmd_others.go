@@ -13,11 +13,11 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	gh "lvm/internal/github"
-	"lvm/internal/manager"
+	gh "llava/internal/github"
+	"llava/internal/manager"
 )
 
-// --- lvm use ---
+// --- llava use ---
 
 func cmdUse() *cobra.Command {
 	var interactive bool
@@ -31,8 +31,8 @@ Without an argument, enters interactive mode (arrow-key selection).
 With a version-id, switches directly.
 
 Examples:
-  lvm use b3412-cuda
-  lvm use   # interactive picker
+  llava use b3412-cuda
+  llava use   # interactive picker
 `,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,7 +41,7 @@ Examples:
 				return err
 			}
 			if len(versions) == 0 {
-				return fmt.Errorf("no versions installed. Run: lvm install latest")
+				return fmt.Errorf("no versions installed. Run: llava install latest")
 			}
 
 			// Explicit version argument — fast path.
@@ -104,7 +104,7 @@ func useInteractive(versions []manager.Version) error {
 func useVersion(id string) error {
 	if !mgr.IsInstalled(id) {
 		return fmt.Errorf(
-			"%q is not installed\nRun 'lvm install %s' to install it, or 'lvm ls' to see installed versions",
+			"%q is not installed\nRun 'llava install %s' to install it, or 'llava ls' to see installed versions",
 			id, id,
 		)
 	}
@@ -127,7 +127,7 @@ func switchTo(id string, ch manager.Channel) error {
 	return nil
 }
 
-// --- lvm current ---
+// --- llava current ---
 
 func cmdCurrent() *cobra.Command {
 	return &cobra.Command{
@@ -136,7 +136,7 @@ func cmdCurrent() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			active := mgr.Active()
 			if active == "" {
-				fmt.Println("No active version. Run: lvm install latest")
+				fmt.Println("No active version. Run: llava install latest")
 				return nil
 			}
 
@@ -158,7 +158,7 @@ func cmdCurrent() *cobra.Command {
 	}
 }
 
-// --- lvm ls ---
+// --- llava ls ---
 
 func cmdList() *cobra.Command {
 	return &cobra.Command{
@@ -172,7 +172,7 @@ func cmdList() *cobra.Command {
 			}
 
 			if len(versions) == 0 {
-				fmt.Println("No versions installed. Run: lvm install latest")
+				fmt.Println("No versions installed. Run: llava install latest")
 				return nil
 			}
 
@@ -219,7 +219,7 @@ func cmdList() *cobra.Command {
 	}
 }
 
-// --- lvm ls-remote ---
+// --- llava ls-remote ---
 
 func cmdListRemote() *cobra.Command {
 	var showBeta bool
@@ -284,7 +284,7 @@ func cmdListRemote() *cobra.Command {
 	return cmd
 }
 
-// --- lvm update ---
+// --- llava update ---
 
 func cmdUpdate() *cobra.Command {
 	var dryRun bool
@@ -295,7 +295,7 @@ func cmdUpdate() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			active := mgr.Active()
 			if active == "" {
-				return fmt.Errorf("no active version — run 'lvm install latest' first")
+				return fmt.Errorf("no active version — run 'llava install latest' first")
 			}
 
 			manifest, err := mgr.ReadManifest(active)
@@ -337,7 +337,7 @@ func cmdUpdate() *cobra.Command {
 				huh.NewGroup(
 					huh.NewSelect[string]().
 						Title("Install update?").
-						Description("To install a specific version, run: lvm install").
+						Description("To install a specific version, run: llava install").
 						Options(
 							huh.NewOption("get update", "get update"),
 							huh.NewOption("no thanks", "no thanks"),
@@ -368,7 +368,7 @@ func cmdUpdate() *cobra.Command {
 	return cmd
 }
 
-// --- lvm channel ---
+// --- llava channel ---
 
 func cmdChannel() *cobra.Command {
 	cmd := &cobra.Command{
@@ -380,9 +380,9 @@ Switching channels instantly activates the version that was last used
 on that channel (no download needed if it was previously installed).
 
 Examples:
-  lvm channel              show current channel info
-  lvm channel stable       switch to stable channel
-  lvm channel beta         switch to beta channel`,
+  llava channel              show current channel info
+  llava channel stable       switch to stable channel
+  llava channel beta         switch to beta channel`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			channels, err := mgr.LoadChannels()
@@ -412,19 +412,19 @@ Examples:
 			switch target {
 			case "stable":
 				if channels.Stable == "" {
-					return fmt.Errorf("no stable version installed — run 'lvm install latest' first")
+					return fmt.Errorf("no stable version installed — run 'llava install latest' first")
 				}
 				if !mgr.IsInstalled(channels.Stable) {
-					return fmt.Errorf("stable version %q is no longer installed — run 'lvm install latest'", channels.Stable)
+					return fmt.Errorf("stable version %q is no longer installed — run 'llava install latest'", channels.Stable)
 				}
 				return switchTo(channels.Stable, manager.ChannelStable)
 
 			case "beta":
 				if channels.Beta == "" {
-					return fmt.Errorf("no beta version installed — run 'lvm install latest-beta' first")
+					return fmt.Errorf("no beta version installed — run 'llava install latest-beta' first")
 				}
 				if !mgr.IsInstalled(channels.Beta) {
-					return fmt.Errorf("beta version %q is no longer installed — run 'lvm install latest-beta'", channels.Beta)
+					return fmt.Errorf("beta version %q is no longer installed — run 'llava install latest-beta'", channels.Beta)
 				}
 				return switchTo(channels.Beta, manager.ChannelBeta)
 
@@ -436,7 +436,7 @@ Examples:
 	return cmd
 }
 
-// --- lvm uninstall ---
+// --- llava uninstall ---
 
 func cmdUninstall() *cobra.Command {
 	var interactive bool
@@ -451,8 +451,8 @@ Without an argument, enters interactive mode (arrow-key selection).
 With a version-id, removes it directly.
 
 Examples:
-  lvm uninstall b3412-cuda
-  lvm uninstall   # interactive picker
+  llava uninstall b3412-cuda
+  llava uninstall   # interactive picker
 `,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -534,7 +534,7 @@ func uninstallVersion(id string) error {
 	return nil
 }
 
-// --- lvm fetch ---
+// --- llava fetch ---
 
 func cmdFetch() *cobra.Command {
 	return &cobra.Command{
@@ -565,20 +565,20 @@ func valueOrNone(s string) string {
 	return s
 }
 
-// --- lvm uninstall-self ---
+// --- llava uninstall-self ---
 
 func cmdUninstallSelf() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "uninstall-self",
-		Short: "Uninstall lvm completely from your machine",
-		Long: `Completely remove lvm from your system.
+		Short: "Uninstall llava completely from your machine",
+		Long: `Completely remove llava from your system.
 
 This will:
-  - Delete the lvm home directory (~/.lvm or $LVM_HOME)
-  - Remove the lvm binary from standard locations
-  - Remove lvm PATH entries from shell profiles (Unix) or user PATH (Windows)
+  - Delete the llava home directory (~/.llava or $LLAVA_HOME)
+  - Remove the llava binary from standard locations
+  - Remove llava PATH entries from shell profiles (Unix) or user PATH (Windows)
 
 The installed llama.cpp versions will also be removed.
 
@@ -586,10 +586,10 @@ Use --yes to skip the confirmation prompt.
 `,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// 1. Determine lvm home.
-			lvmHome, err := lvmHome()
+			// 1. Determine llava home.
+			llavaHome, err := llavaHome()
 			if err != nil {
-				return fmt.Errorf("cannot determine lvm home: %w", err)
+				return fmt.Errorf("cannot determine llava home: %w", err)
 			}
 
 			// 2. Ask for confirmation.
@@ -599,7 +599,7 @@ Use --yes to skip the confirmation prompt.
 				form := huh.NewForm(
 					huh.NewGroup(
 						huh.NewSelect[string]().
-							Title("Uninstall lvm?").
+							Title("Uninstall llava?").
 							Description("This will remove all llama.cpp versions, shims, and configuration.").
 							Options(
 								huh.NewOption("uninstall", "yes"),
@@ -626,29 +626,29 @@ Use --yes to skip the confirmation prompt.
 			green := color.New(color.FgGreen, color.Bold).SprintFunc()
 			yellow := color.New(color.FgYellow).SprintFunc()
 
-			// 3. Remove lvm home directory.
-			if err := os.RemoveAll(lvmHome); err != nil {
+			// 3. Remove llava home directory.
+			if err := os.RemoveAll(llavaHome); err != nil {
 				// Don't abort — try to clean up the rest.
-				fmt.Fprintf(os.Stderr, "%s Could not remove %s: %v\n", yellow("⚠"), lvmHome, err)
+				fmt.Fprintf(os.Stderr, "%s Could not remove %s: %v\n", yellow("⚠"), llavaHome, err)
 			} else {
-				fmt.Printf("%s Removed %s\n", green("✓"), lvmHome)
+				fmt.Printf("%s Removed %s\n", green("✓"), llavaHome)
 			}
 
-			// 4. Remove lvm binary.
-			removeLvmBinary()
+			// 4. Remove llava binary.
+			removeLlavaBinary()
 
 			// 5. Clean PATH entries.
 			cleanPathForUninstall()
 
 			fmt.Println()
 			bold := color.New(color.Bold).SprintFunc()
-			fmt.Printf("%s lvm has been uninstalled.\n", bold("Done"))
+			fmt.Printf("%s llava has been uninstalled.\n", bold("Done"))
 			fmt.Println()
 
-			// Warn about custom LVM_HOME.
-			if os.Getenv("LVM_HOME") != "" && os.Getenv("LVM_HOME") != lvmHome {
-				fmt.Printf("%s Warning: $LVM_HOME is set to a custom path that was not cleaned up:\n", yellow("⚠"))
-				fmt.Printf("   %s\n", os.Getenv("LVM_HOME"))
+			// Warn about custom LLAVA_HOME.
+			if os.Getenv("LLAVA_HOME") != "" && os.Getenv("LLAVA_HOME") != llavaHome {
+				fmt.Printf("%s Warning: $LLAVA_HOME is set to a custom path that was not cleaned up:\n", yellow("⚠"))
+				fmt.Printf("   %s\n", os.Getenv("LLAVA_HOME"))
 			}
 
 			return nil
@@ -659,18 +659,18 @@ Use --yes to skip the confirmation prompt.
 	return cmd
 }
 
-// removeLvmBinary attempts to remove the lvm binary from standard install locations.
-func removeLvmBinary() {
+// removeLlavaBinary attempts to remove the llava binary from standard install locations.
+func removeLlavaBinary() {
 	locations := []string{
-		"/usr/local/bin/lvm",
-		"/usr/bin/lvm",
-		"/opt/local/bin/lvm",
-		"/usr/sbin/lvm",
+		"/usr/local/bin/llava",
+		"/usr/bin/llava",
+		"/opt/local/bin/llava",
+		"/usr/sbin/llava",
 	}
 	home, _ := os.UserHomeDir()
 	if home != "" {
 		locations = append(locations,
-			filepath.Join(home, "bin", "lvm"),
+			filepath.Join(home, "bin", "llava"),
 		)
 	}
 	for _, loc := range locations {
@@ -682,9 +682,9 @@ func removeLvmBinary() {
 			}
 		}
 	}
-	// Windows: %USERPROFILE%\bin\lvm.exe
+	// Windows: %USERPROFILE%\bin\llava.exe
 	if runtime.GOOS == "windows" && home != "" {
-		winLoc := filepath.Join(home, "bin", "lvm.exe")
+		winLoc := filepath.Join(home, "bin", "llava.exe")
 		if _, err := os.Stat(winLoc); err == nil {
 			if err := os.Remove(winLoc); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: could not remove %s: %v\n", winLoc, err)
@@ -695,7 +695,7 @@ func removeLvmBinary() {
 	}
 }
 
-// cleanPathForUninstall removes lvm-related entries from shell profiles (Unix)
+// cleanPathForUninstall removes llava-related entries from shell profiles (Unix)
 // or the Windows user PATH registry entry.
 func cleanPathForUninstall() {
 	if runtime.GOOS == "windows" {
@@ -705,14 +705,14 @@ func cleanPathForUninstall() {
 	cleanUnixShellProfiles()
 }
 
-// cleanUnixShellProfiles removes lvm-related lines from found shell profile files.
+// cleanUnixShellProfiles removes llava-related lines from found shell profile files.
 func cleanUnixShellProfiles() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
-	lvmHome, _ := lvmHome()
-	shimLine := "export PATH=\"" + filepath.Join(lvmHome, "shims") + ":$PATH\""
+	llavaHome, _ := llavaHome()
+	shimLine := "export PATH=\"" + filepath.Join(llavaHome, "shims") + ":$PATH\""
 	profiles := []string{".zshrc", ".bashrc", ".bash_profile", ".profile"}
 	for _, profile := range profiles {
 		profilePath := filepath.Join(home, profile)
@@ -745,11 +745,11 @@ func cleanUnixShellProfiles() {
 	}
 }
 
-// cleanWindowsPath removes lvm-related paths from the user PATH registry entry.
+// cleanWindowsPath removes llava-related paths from the user PATH registry entry.
 func cleanWindowsPath() {
-	lvmHome, _ := lvmHome()
+	llavaHome, _ := llavaHome()
 	toRemove := []string{
-		filepath.Join(lvmHome, "shims"),
+		filepath.Join(llavaHome, "shims"),
 	}
 	home, _ := os.UserHomeDir()
 	if home != "" {

@@ -1,4 +1,4 @@
-module lvm
+module llava
 
 go 1.23.0
 

@@ -1,8 +1,8 @@
-# lvm Cross-Compilation Build Script for Windows
+# llava Cross-Compilation Build Script for Windows
 $ErrorActionPreference = "Stop"
 $DistDir = "dist"
 
-Write-Host "Building lvm for all platforms..." -ForegroundColor Cyan
+Write-Host "Building llava for all platforms..." -ForegroundColor Cyan
 Write-Host ""
 
 foreach ($platform in @("Windows-amd64", "Windows-386", "Linux-amd64", "Linux-arm64", "Linux-386", "macOS-amd64", "macOS-arm64")) {
@@ -19,11 +19,11 @@ foreach ($platform in @("Windows-amd64", "Windows-386", "Linux-amd64", "Linux-ar
     }
     
     try {
-        go build -o "$DistDir\lvm-$platform$ext" .
+        go build -o "$DistDir\llava-$platform$ext" .
         Write-Host " OK" -ForegroundColor Green
         
-        if (Test-Path "$DistDir\lvm-$platform$ext") {
-            $kb = [math]::Round((Get-Item "$DistDir\lvm-$platform$ext").Length / 1KB, 2)
+        if (Test-Path "$DistDir\llava-$platform$ext") {
+            $kb = [math]::Round((Get-Item "$DistDir\llava-$platform$ext").Length / 1KB, 2)
             Write-Host "  Size: $($kb) KB" -ForegroundColor Gray
         }
     } catch {

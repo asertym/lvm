@@ -13,10 +13,10 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	"lvm/internal/manager"
-	"lvm/internal/selfupdate"
-	"lvm/internal/shim"
-	"lvm/internal/updater"
+	"llava/internal/manager"
+	"llava/internal/selfupdate"
+	"llava/internal/shim"
+	"llava/internal/updater"
 )
 
 var (
@@ -26,19 +26,19 @@ var (
 )
 
 func main() {
-	home, err := lvmHome()
+	home, err := llavaHome()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "lvm: cannot determine home directory: %v\n", err)
+		fmt.Fprintf(os.Stderr, "llava: cannot determine home directory: %v\n", err)
 		os.Exit(1)
 	}
 	mgr = manager.New(home)
 
 	root := &cobra.Command{
-		Use:   "lvm",
+		Use:   "llava",
 		Short: "llama.cpp version manager",
-		Long: `lvm manages multiple llama.cpp versions on your machine.
+		Long: `llava manages multiple llama.cpp versions on your machine.
 Install, switch, and update llama.cpp builds across stable and beta channels.
-Run 'lvm init' once to set up your environment.`,
+Run 'llava init' once to set up your environment.`,
 		SilenceUsage: true,
 	}
 
@@ -64,26 +64,26 @@ Run 'lvm init' once to set up your environment.`,
 	}
 }
 
-// lvmHome returns the path to the lvm home directory.
-// Uses LVM_HOME env var if set, otherwise ~/.lvm.
-func lvmHome() (string, error) {
-	if h := os.Getenv("LVM_HOME"); h != "" {
+// llavaHome returns the path to the llava home directory.
+// Uses LLAVA_HOME env var if set, otherwise ~/.llava.
+func llavaHome() (string, error) {
+	if h := os.Getenv("LLAVA_HOME"); h != "" {
 		return h, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".lvm"), nil
+	return filepath.Join(home, ".llava"), nil
 }
 
-// cmdVersion prints the lvm version and checks for updates.
+// cmdVersion prints the llava version and checks for updates.
 func cmdVersion() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print lvm version",
+		Short: "Print llava version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("lvm %s\n", version)
+			fmt.Printf("llava %s\n", version)
 
 			if skipUpdate {
 				return
@@ -105,7 +105,7 @@ func cmdVersion() *cobra.Command {
 				yellow := color.New(color.FgYellow).SprintFunc()
 				bold := color.New(color.Bold).SprintFunc()
 				fmt.Printf("\n%s %s → %s available!\n", yellow("Update:"), bold(version), latest.TagName)
-				fmt.Printf("  Run 'lvm version' again to install.\n")
+				fmt.Printf("  Run 'llava version' again to install.\n")
 				return
 			}
 
@@ -113,8 +113,8 @@ func cmdVersion() *cobra.Command {
 			form := huh.NewForm(
 				huh.NewGroup(
 					huh.NewSelect[string]().
-						Title("Update lvm?").
-						Description("Download and install lvm").
+						Title("Update llava?").
+						Description("Download and install llava").
 						Options(
 							huh.NewOption("update", "update"),
 							huh.NewOption("skip for now", "skip"),
@@ -148,17 +148,17 @@ func cmdVersion() *cobra.Command {
 			}
 
 			green := color.New(color.FgGreen, color.Bold).SprintFunc()
-			fmt.Printf("\n%s Updated to %s. Restart lvm to use the new version.\n", green("✓"), latest.TagName)
+			fmt.Printf("\n%s Updated to %s. Restart llava to use the new version.\n", green("✓"), latest.TagName)
 		},
 	}
 }
 
-// cmdInit sets up lvm and automatically configures PATH.
+// cmdInit sets up llava and automatically configures PATH.
 // Zero friction: no prompts, no manual copy-paste required.
 func cmdInit() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
-		Short: "Set up lvm (run once after install)",
+		Short: "Set up llava (run once after install)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := mgr.Init(); err != nil {
 				return err
@@ -172,7 +172,7 @@ func cmdInit() *cobra.Command {
 			green := color.New(color.FgGreen, color.Bold).SprintFunc()
 			bold := color.New(color.Bold).SprintFunc()
 
-			fmt.Printf("\n%s lvm initialized at %s\n", green("✓"), mgr.Home())
+			fmt.Printf("\n%s llava initialized at %s\n", green("✓"), mgr.Home())
 
 			shimsDir := mgr.ShimsDir()
 
@@ -197,7 +197,7 @@ func cmdInit() *cobra.Command {
 				// Unix: append to ALL existing standard shell profiles (not just the first).
 				home, _ := os.UserHomeDir()
 				profiles := []string{".zshrc", ".bashrc", ".bash_profile", ".profile"}
-				line := fmt.Sprintf("\n# lvm\nexport PATH=\"%s:$PATH\"\n", shimsDir)
+				line := fmt.Sprintf("\n# llava\nexport PATH=\"%s:$PATH\"\n", shimsDir)
 				for _, p := range profiles {
 					profilePath := filepath.Join(home, p)
 					if _, err := os.Stat(profilePath); err != nil {
@@ -231,7 +231,7 @@ func cmdInit() *cobra.Command {
 			}
 
 			fmt.Printf("\n%s Restart your terminal to apply changes\n", bold("Next:"))
-			fmt.Printf("Then run: %s\n\n", bold("lvm install latest"))
+			fmt.Printf("Then run: %s\n\n", bold("llava install latest"))
 			return nil
 		},
 	}
